@@ -107,6 +107,7 @@ button:active { opacity: 0.7; }
     <div id="setupScreen" class="setup-fields">
         <input id="setupToken" type="password" placeholder="GitHub personal access token">
         <input id="setupOpenai" type="password" placeholder="OpenAI API key (optional, for TTS)">
+        <input id="setupAnthropic" type="password" placeholder="Anthropic API key (optional, for chat)">
         <input id="setupRepo" type="text" placeholder="Private repo name (e.g. Spanish)" value="Spanish">
         <input id="setupPath" type="text" placeholder="Data file path (e.g. spanish.txt)" value="spanish.txt">
         <input id="setupPw" type="password" placeholder="Choose a password">
@@ -116,6 +117,7 @@ button:active { opacity: 0.7; }
         <div class="hint">
             GitHub token needs Contents read/write on your private repo and this public repo.
             OpenAI key enables Spanish text-to-speech on card reveal.
+            Anthropic key enables Claude chat assistant for grammar help.
         </div>
     </div>
 
@@ -224,6 +226,7 @@ async function saveVaultToPublicRepo(token, vaultData) {
 async function doSetup() {
     const token = document.getElementById('setupToken').value.trim();
     const openaiKey = document.getElementById('setupOpenai').value.trim();
+    const anthropicKey = document.getElementById('setupAnthropic').value.trim();
     const repo = document.getElementById('setupRepo').value.trim();
     const path = document.getElementById('setupPath').value.trim() || 'spanish.txt';
     const pw = document.getElementById('setupPw').value;
@@ -247,7 +250,7 @@ async function doSetup() {
     setStatus('Encrypting...', '');
 
     try {
-        const payload = JSON.stringify({ token, openaiKey, repo, path });
+        const payload = JSON.stringify({ token, openaiKey, anthropicKey, repo, path });
         const encrypted = await encrypt(payload, pw);
         await saveVaultToPublicRepo(token, { encrypted });
 
@@ -255,7 +258,7 @@ async function doSetup() {
         localStorage.setItem('sdMeta', JSON.stringify({ repo, path }));
 
         setStatus('Saved — loading app...', 'ok');
-        await launchApp(token, openaiKey, repo, path);
+        await launchApp(token, openaiKey, anthropicKey, repo, path);
     } catch(e) {
         setStatus('Setup failed: ' + e.message, 'err');
     }
@@ -287,6 +290,7 @@ async function doUnlock() {
         const parsed = JSON.parse(json);
         const token = parsed.token;
         const openaiKey = parsed.openaiKey || '';
+        const anthropicKey = parsed.anthropicKey || '';
         const repo = parsed.repo;
         const path = parsed.path || 'spanish.txt';
 
@@ -296,7 +300,7 @@ async function doUnlock() {
         localStorage.setItem('sdMeta', JSON.stringify({ repo, path }));
 
         setStatus('Loading app...', 'ok');
-        await launchApp(token, openaiKey, repo, path);
+        await launchApp(token, openaiKey, anthropicKey, repo, path);
     } catch(e) {
         if (e.name === 'OperationError') {
             setStatus('Wrong password', 'err');
@@ -308,7 +312,7 @@ async function doUnlock() {
     }
 }
 
-async function launchApp(token, openaiKey, repo, path) {
+async function launchApp(token, openaiKey, anthropicKey, repo, path) {
     try {
         const res = await ghFetch(GH_OWNER, repo, token, APP_PATH);
         if (!res.ok) {
@@ -323,6 +327,7 @@ async function launchApp(token, openaiKey, repo, path) {
             window.__CD_REPO = ${JSON.stringify(repo)};
             window.__CD_PATH = ${JSON.stringify(path)};
             window.__CD_OPENAI_KEY = ${JSON.stringify(openaiKey)};
+            window.__CD_ANTHROPIC_KEY = ${JSON.stringify(anthropicKey)};
         <\/script>`;
 
         document.open();
