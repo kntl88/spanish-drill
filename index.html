@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Spanish Drill</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #1a1714;
+    --card: #242019;
+    --card-border: #3a352c;
+    --text: #e8e0d4;
+    --dim: #8a8078;
+    --accent: #c2703e;
+    --green: #6aab6d;
+    --red: #c25a4a;
+    --input-bg: #2c261f;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+}
+.login {
+    max-width: 360px;
+    width: 100%;
+    padding: 20px;
+    text-align: center;
+}
+.login h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+    color: var(--accent);
+}
+.login input {
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    padding: 12px 14px;
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    outline: none;
+    margin-bottom: 10px;
+    -webkit-appearance: none;
+}
+.login input:focus { border-color: var(--accent); }
+.login input::placeholder { color: var(--dim); }
+button {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 24px;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.15s;
+    -webkit-appearance: none;
+}
+button:active { opacity: 0.7; }
+.btn-primary { background: var(--accent); color: #fff; margin-bottom: 10px; }
+.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--card-border); }
+.status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--dim);
+    margin-top: 14px;
+    min-height: 20px;
+}
+.status.err { color: var(--red); }
+.status.ok { color: var(--green); }
+.hint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--dim);
+    margin-top: 16px;
+    line-height: 1.6;
+}
+.setup-fields { display: none; }
+.setup-fields.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="login">
+    <h1>Spanish Drill</h1>
+
+    <div id="unlockScreen">
+        <input id="pw" type="password" placeholder="Password" autofocus
+               onkeydown="if(event.key==='Enter')doUnlock()">
+        <button class="btn-primary" onclick="doUnlock()">Unlock</button>
+        <button class="btn-secondary" onclick="showSetup()">Setup new</button>
+    </div>
+
+    <div id="setupScreen" class="setup-fields">
+        <input id="setupToken" type="password" placeholder="GitHub personal access token">
+        <input id="setupRepo" type="text" placeholder="Private repo name (e.g. Spanish)" value="Spanish">
+        <input id="setupPath" type="text" placeholder="Data file path (e.g. spanish.txt)" value="spanish.txt">
+        <input id="setupPw" type="password" placeholder="Choose a password">
+        <input id="setupPw2" type="password" placeholder="Confirm password">
+        <button class="btn-primary" onclick="doSetup()">Encrypt &amp; Save</button>
+        <button class="btn-secondary" onclick="showUnlock()">Back to unlock</button>
+        <div class="hint">
+            Token needs Contents read/write on your private repo and this public repo.
+        </div>
+    </div>
+
+    <div class="status" id="status"></div>
+</div>
+
+<script>
+const GH_OWNER = 'kntl88';
+const GH_PUBLIC_REPO = 'spanish-drill';
+const VAULT_PATH = 'vault.json';
+const APP_PATH = 'spanish.html';
+
+const SALT_LEN = 16, IV_LEN = 12, PBKDF2_ITER = 310000;
+
+function setStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status' + (type ? ' ' + type : '');
+}
+
+function showSetup() {
+    document.getElementById('unlockScreen').style.display = 'none';
+    document.getElementById('setupScreen').classList.add('active');
+    document.getElementById('setupToken').focus();
+}
+
+function showUnlock() {
+    document.getElementById('setupScreen').classList.remove('active');
+    document.getElementById('unlockScreen').style.display = 'block';
+    document.getElementById('pw').focus();
+}
+
+async function deriveKey(pw, salt) {
+    const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: PBKDF2_ITER, hash: 'SHA-256' },
+        km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+    );
+}
+
+async function encrypt(plaintext, pw) {
+    const s = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+    const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await deriveKey(pw, s), new TextEncoder().encode(plaintext));
+    const buf = new Uint8Array(SALT_LEN + IV_LEN + ct.byteLength);
+    buf.set(s, 0); buf.set(iv, SALT_LEN); buf.set(new Uint8Array(ct), SALT_LEN + IV_LEN);
+    return btoa(String.fromCharCode(...buf));
+}
+
+async function decrypt(b64, pw) {
+    const p = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    return new TextDecoder().decode(
+        await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: p.slice(SALT_LEN, SALT_LEN + IV_LEN) },
+            await deriveKey(pw, p.slice(0, SALT_LEN)),
+            p.slice(SALT_LEN + IV_LEN)
+        )
+    );
+}
+
+async function ghFetch(owner, repo, token, path, opts = {}) {
+    return fetch('https://api.github.com/repos/' + owner + '/' + repo + '/contents/' + path + '?t=' + Date.now(), {
+        ...opts,
+        headers: {
+            'Authorization': 'Bearer ' + token,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+            'If-None-Match': '',
+            ...(opts.headers || {})
+        },
+        cache: 'no-store'
+    });
+}
+
+async function loadVaultFromPublicRepo() {
+    const res = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_PUBLIC_REPO + '/contents/' + VAULT_PATH + '?t=' + Date.now(), {
+        headers: { 'Accept': 'application/vnd.github.v3+json', 'If-None-Match': '' },
+        cache: 'no-store'
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error('Failed to load vault: ' + res.status);
+    const data = await res.json();
+    return JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))));
+}
+
+async function saveVaultToPublicRepo(token, vaultData) {
+    let sha = null;
+    try {
+        const existing = await ghFetch(GH_OWNER, GH_PUBLIC_REPO, token, VAULT_PATH);
+        if (existing.ok) sha = (await existing.json()).sha;
+    } catch(e) {}
+
+    const body = {
+        message: 'Update vault',
+        content: btoa(unescape(encodeURIComponent(JSON.stringify(vaultData))))
+    };
+    if (sha) body.sha = sha;
+
+    const res = await ghFetch(GH_OWNER, GH_PUBLIC_REPO, token, VAULT_PATH, {
+        method: 'PUT',
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error('Failed to save vault: ' + (await res.json()).message || res.status);
+}
+
+async function doSetup() {
+    const token = document.getElementById('setupToken').value.trim();
+    const repo = document.getElementById('setupRepo').value.trim();
+    const path = document.getElementById('setupPath').value.trim() || 'spanish.txt';
+    const pw = document.getElementById('setupPw').value;
+    const pw2 = document.getElementById('setupPw2').value;
+
+    if (!token || !repo) { setStatus('Fill in token and repo', 'err'); return; }
+    if (!pw || pw.length < 3) { setStatus('Password too short', 'err'); return; }
+    if (pw !== pw2) { setStatus('Passwords don\'t match', 'err'); return; }
+
+    setStatus('Verifying token...', '');
+
+    try {
+        const check = await ghFetch(GH_OWNER, repo, token, '');
+        if (check.status === 401 || check.status === 403) {
+            setStatus('Invalid token or no access to repo', 'err'); return;
+        }
+    } catch(e) {
+        setStatus('Token verification failed: ' + e.message, 'err'); return;
+    }
+
+    setStatus('Encrypting...', '');
+
+    try {
+        const payload = JSON.stringify({ token, repo, path });
+        const encrypted = await encrypt(payload, pw);
+        await saveVaultToPublicRepo(token, { encrypted });
+
+        localStorage.setItem('sdVault', encrypted);
+        localStorage.setItem('sdMeta', JSON.stringify({ repo, path }));
+
+        setStatus('Saved — loading app...', 'ok');
+        await launchApp(token, repo, path);
+    } catch(e) {
+        setStatus('Setup failed: ' + e.message, 'err');
+    }
+}
+
+async function doUnlock() {
+    const pw = document.getElementById('pw').value;
+    if (!pw) { setStatus('Enter password', 'err'); return; }
+
+    setStatus('Decrypting...', '');
+
+    let encrypted = localStorage.getItem('sdVault');
+
+    if (!encrypted) {
+        try {
+            setStatus('Fetching vault...', '');
+            const vault = await loadVaultFromPublicRepo();
+            if (!vault || !vault.encrypted) {
+                setStatus('No vault found — use Setup', 'err'); return;
+            }
+            encrypted = vault.encrypted;
+        } catch(e) {
+            setStatus('Failed to load vault: ' + e.message, 'err'); return;
+        }
+    }
+
+    try {
+        const json = await decrypt(encrypted, pw);
+        const parsed = JSON.parse(json);
+        const token = parsed.token;
+        const repo = parsed.repo;
+        const path = parsed.path || 'spanish.txt';
+
+        if (!token || !repo) throw new Error('Invalid vault contents');
+
+        localStorage.setItem('sdVault', encrypted);
+        localStorage.setItem('sdMeta', JSON.stringify({ repo, path }));
+
+        setStatus('Loading app...', 'ok');
+        await launchApp(token, repo, path);
+    } catch(e) {
+        if (e.name === 'OperationError') {
+            setStatus('Wrong password', 'err');
+        } else {
+            setStatus('Decrypt failed: ' + e.message, 'err');
+        }
+        document.getElementById('pw').value = '';
+        document.getElementById('pw').focus();
+    }
+}
+
+async function launchApp(token, repo, path) {
+    try {
+        const res = await ghFetch(GH_OWNER, repo, token, APP_PATH);
+        if (!res.ok) {
+            setStatus('Failed to load app from private repo: ' + res.status, 'err'); return;
+        }
+        const data = await res.json();
+        const html = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ''))));
+
+        const injection = `<script>
+            window.__CD_TOKEN = ${JSON.stringify(token)};
+            window.__CD_OWNER = ${JSON.stringify(GH_OWNER)};
+            window.__CD_REPO = ${JSON.stringify(repo)};
+            window.__CD_PATH = ${JSON.stringify(path)};
+        <\/script>`;
+
+        document.open();
+        document.write(html.replace('<head>', '<head>' + injection));
+        document.close();
+    } catch(e) {
+        setStatus('Failed to launch: ' + e.message, 'err');
+    }
+}
+
+(function init() {
+    const hasVault = !!localStorage.getItem('sdVault');
+    if (hasVault) {
+        showUnlock();
+    } else {
+        loadVaultFromPublicRepo().then(vault => {
+            if (vault && vault.encrypted) {
+                localStorage.setItem('sdVault', vault.encrypted);
+                showUnlock();
+            } else {
+                showSetup();
+            }
+        }).catch(() => {
+            showSetup();
+        });
+    }
+})();
+</script>
+</body>
+</html>
