@@ -1,0 +1,492 @@
+<title>Conjuga · Replay</title>
+<style>
+:root {
+  --bg: #F2EDE3;
+  --surface: #FEFDFB;
+  --surface-dim: #EAE5DA;
+  --border: #D2C9B8;
+  --text: #2C2418;
+  --text-secondary: #706550;
+  --text-muted: #9C9282;
+  --accent: #96731E;
+  --accent-text: #FFFFFF;
+  --good: #3A7A56;
+  --bad: #C0392B;
+  --bar: #96731E;
+  --cell-empty: rgba(0,0,0,0.025);
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #201B11; --surface: #2A2418; --surface-dim: #251F14; --border: #4A4130;
+    --text: #EDE6D4; --text-secondary: #B3A88E; --text-muted: #7E7460;
+    --accent: #C9A44A; --accent-text: #201B11; --good: #6FAE8B; --bad: #D97A6C;
+    --bar: #C9A44A; --cell-empty: rgba(255,255,255,0.04);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #201B11; --surface: #2A2418; --surface-dim: #251F14; --border: #4A4130;
+  --text: #EDE6D4; --text-secondary: #B3A88E; --text-muted: #7E7460;
+  --accent: #C9A44A; --accent-text: #201B11; --good: #6FAE8B; --bad: #D97A6C;
+  --bar: #C9A44A; --cell-empty: rgba(255,255,255,0.04);
+}
+:root[data-theme="light"] {
+  --bg: #F2EDE3; --surface: #FEFDFB; --surface-dim: #EAE5DA; --border: #D2C9B8;
+  --text: #2C2418; --text-secondary: #706550; --text-muted: #9C9282;
+  --accent: #96731E; --accent-text: #FFFFFF; --good: #3A7A56; --bad: #C0392B;
+  --bar: #96731E; --cell-empty: rgba(0,0,0,0.025);
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-ui); margin: 0; padding: 18px clamp(12px, 3vw, 36px) 60px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; margin: 0; letter-spacing: 0.01em; }
+h1 small { font-size: 0.85rem; color: var(--text-muted); font-family: var(--font-ui); font-weight: 400; margin-left: 8px; }
+.topbar { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+#srcStatus { font-size: 0.78rem; color: var(--text-secondary); }
+#srcStatus button { margin-left: 6px; }
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
+.controls label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-muted); display: block; margin-bottom: 3px; }
+select, button.ctl { font-family: var(--font-ui); font-size: 0.85rem; background: var(--surface-dim); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 5px 10px; cursor: pointer; }
+button.ctl:hover, select:hover { border-color: var(--accent); }
+button.ctl:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.ctl.play { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; min-width: 74px; }
+.transport { display: flex; gap: 6px; align-items: center; }
+.scrub-wrap { flex: 1 1 220px; min-width: 180px; display: flex; align-items: center; gap: 10px; }
+input[type=range] { flex: 1; accent-color: var(--accent); }
+#posLabel { font-size: 0.82rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.chk { font-size: 0.8rem; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; align-items: stretch; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px 12px; }
+.stat .num { font-family: var(--font-display); font-size: 2.1rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat .lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-top: 2px; }
+.stat.wide { flex: 1 1 260px; display: flex; flex-direction: column; justify-content: center; }
+#nowLine { font-size: 0.92rem; line-height: 1.5; }
+#nowLine .res-good { color: var(--good); font-weight: 700; }
+#nowLine .res-bad { color: var(--bad); font-weight: 700; }
+#nowMeta { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+.matrix-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-width: 760px; }
+.matrix th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; padding: 2px 4px; text-align: center; }
+.matrix th.person { text-align: right; padding-right: 8px; white-space: nowrap; }
+.matrix td { position: relative; border-radius: 7px; background: var(--cell-empty); min-width: 76px; height: 52px; text-align: center; vertical-align: middle; padding: 8px 4px 4px; transition: background 0.25s; }
+.matrix td .bar { position: absolute; top: 0; left: 0; height: 4px; border-radius: 4px 0 4px 0; background: var(--bar); opacity: 0.85; transition: width 0.2s; }
+.matrix td .cnt { font-size: 0.88rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.matrix td .pct { font-size: 0.68rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.matrix td.empty .cnt { color: var(--text-muted); font-weight: 400; }
+.matrix td .mark { position: absolute; top: 3px; right: 5px; font-size: 0.75rem; font-weight: 700; }
+.matrix td .mark.g { color: var(--good); }
+.matrix td .mark.b { color: var(--bad); }
+.matrix td.flash { animation: cellflash 0.7s ease-out; }
+@keyframes cellflash { 0% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .matrix td.flash { animation: none; box-shadow: 0 0 0 2px var(--accent); } }
+
+.verbchips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.vchip { font-size: 0.8rem; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 3px 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.vchip b { color: var(--text); font-weight: 600; }
+.vchip.fresh { border-color: var(--accent); color: var(--accent); }
+
+.foot { font-size: 0.72rem; color: var(--text-muted); margin-top: 14px; line-height: 1.6; }
+.drop { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; color: var(--text-secondary); margin: 20px 0; font-size: 0.95rem; }
+.drop.over { border-color: var(--accent); color: var(--accent); }
+.gh-login input { font-family: var(--font-ui); font-size: 0.88rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; margin: 0 4px 6px 0; }
+.gh-login input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.userpick { display: inline-flex; gap: 6px; margin-left: 8px; vertical-align: middle; }
+.userpick button { font-size: 0.75rem; }
+.userpick button.cur { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.hidden { display: none; }
+</style>
+
+<div class="topbar">
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type</small></h1>
+  <span id="srcStatus">no data loaded</span>
+</div>
+
+<div class="drop" id="dropZone">
+  <div class="gh-login" id="ghLogin">
+    <div style="font-weight:600; margin-bottom:8px; color:var(--text)">Load cloud data</div>
+    <input id="ghUser" type="text" placeholder="Username" autocomplete="username">
+    <input id="ghPw" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="ctl" id="ghGo">Sign in</button>
+    <div id="ghStatus" style="font-size:0.78rem; margin-top:6px; min-height:1em"></div>
+  </div>
+  <div style="margin:14px 0; font-size:0.78rem; opacity:0.7">— or —</div>
+  Drop <b>conjuga-attempts.json</b> here, or
+  <button class="ctl" onclick="document.getElementById('filePick').click()">choose a file</button>
+  <input type="file" id="filePick" accept=".json" class="hidden">
+  <div style="font-size:0.78rem; margin-top:8px; opacity:0.8">accepts the raw attempts array or the <code>users/&lt;name&gt;/conjuga-attempts.json</code> cloud file</div>
+</div>
+
+<div id="tool" class="hidden">
+  <div class="controls">
+    <div>
+      <label for="gidSel">Verb type</label>
+      <select id="gidSel"></select>
+    </div>
+    <div>
+      <label>Playback</label>
+      <div class="transport">
+        <button class="ctl" id="btnReset" title="Restart (Home)">⏮</button>
+        <button class="ctl" id="btnBack" title="Step back (←)">‹</button>
+        <button class="ctl play" id="btnPlay" title="Play / pause (Space)">▶ Play</button>
+        <button class="ctl" id="btnStep" title="Step (→)">›</button>
+        <select id="speedSel" title="Speed">
+          <option value="500">2 / s</option>
+          <option value="200" selected>5 / s</option>
+          <option value="66">15 / s</option>
+          <option value="20">50 / s</option>
+        </select>
+      </div>
+    </div>
+    <div class="scrub-wrap">
+      <input type="range" id="scrub" min="0" value="0" step="1" aria-label="Replay position">
+      <span id="posLabel">0 / 0</span>
+    </div>
+    <label class="chk"><input type="checkbox" id="chkPower"> include power practice</label>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="num" id="statCirc">0</div>
+      <div class="lbl">verbs in circulation</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="statN">0</div>
+      <div class="lbl">answers replayed</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="statPct">–</div>
+      <div class="lbl">correct so far</div>
+    </div>
+    <div class="stat wide">
+      <div id="nowLine">Press ▶ Play or scrub to replay this type's history.</div>
+      <div id="nowMeta"></div>
+    </div>
+  </div>
+
+  <div class="matrix-wrap">
+    <table class="matrix" id="matrix"></table>
+  </div>
+  <div class="verbchips" id="verbChips"></div>
+  <div class="foot">
+    Heat = cumulative correct rate for that cell up to the current answer (red 0% → green 100%; faint until ~6 answers).
+    Top bar = this cell's share of the type's attempts (widest bar = most-drilled cell).
+    Imperative rows use the command persons tú · ud · nos · vos · uds at p0–p4.
+    ✓/✗ marks the cell of the answer just replayed. Keys: Space play · ← → step · Home restart.
+  </div>
+</div>
+
+<script>
+'use strict';
+const TENSES = ['infinitive','present','preterite','imperfect','future','conditional','imperative_aff','imperative_neg'];
+const TLABEL = {infinitive:'Infinitive', present:'Present', preterite:'Preterite', imperfect:'Imperfect',
+                future:'Future', conditional:'Conditional', imperative_aff:'Imp (+)', imperative_neg:'Imp (−)'};
+const PERSONS = ['yo','tú','él/ella','nosotros','vosotros','ellos/ellas'];
+const IMP_PERSONS = ['tú','usted','nosotros','vosotros','ustedes','—'];
+const GID_LABEL = {'reg-ar':'Regular -AR','reg-er':'Regular -ER','reg-ir':'Regular -IR',
+  'stem-1':'Stem-changing · AR/ER boot','stem-2':'Stem-changing · IR two changes','stem-3':'Stem-changing · IR one change',
+  'irr-ser':'ser','irr-estar':'estar','irr-ir':'ir','irr-tener':'tener','irr-hacer':'hacer','irr-decir':'decir',
+  'orth-1':'Keep the Sound (-car/-gar/-zar)','orth-2c':'-CER','orth-2g':'-GER/-GIR','orth-2i':'-UIR','orth-2u':'-GUIR'};
+
+let allAttempts = [];   // full log, sorted by ts
+let seq = [];           // filtered to current gid (+power filter)
+let pos = 0;            // answers replayed so far (0..seq.length)
+let cells = {};         // 'tn|p' -> {n, c}
+let circ = new Set();   // verbs seen
+let timer = null;
+
+function cellKey(e) {
+  let p = e.p;
+  if (e.tn === 'infinitive' || p == null) p = 0;
+  return e.tn + '|' + p;
+}
+
+/* ---------- data loading ---------- */
+function acceptData(raw, label) {
+  let arr = null;
+  if (Array.isArray(raw)) arr = raw;
+  else if (raw && Array.isArray(raw.attempts)) arr = raw.attempts;
+  if (!arr || !arr.length || arr[0].tn === undefined) {
+    document.getElementById('srcStatus').textContent = 'could not read that file — expected an attempts array';
+    return;
+  }
+  allAttempts = arr.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  document.getElementById('srcStatus').innerHTML = escHtml(label) + ' · ' + allAttempts.length + ' answers ' +
+    '<button class="ctl" onclick="document.getElementById(\'filePick\').click()">load other</button>';
+  document.getElementById('dropZone').classList.add('hidden');
+  document.getElementById('tool').classList.remove('hidden');
+  populateGids();
+  rebuildSeq();
+}
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function tryAutoLoad() {
+  fetch('users/pekka/conjuga-attempts.json')
+    .then(r => { if (!r.ok) throw 0; return r.json(); })
+    .then(j => acceptData(j, 'users/pekka (auto)'))
+    .catch(() => {});
+}
+document.getElementById('filePick').addEventListener('change', ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  f.text().then(t => acceptData(JSON.parse(t), f.name))
+    .catch(() => { document.getElementById('srcStatus').textContent = 'not valid JSON'; });
+});
+const dz = document.getElementById('dropZone');
+['dragover', 'dragenter'].forEach(evn => dz.addEventListener(evn, e => { e.preventDefault(); dz.classList.add('over'); }));
+['dragleave', 'drop'].forEach(evn => dz.addEventListener(evn, e => { e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  f.text().then(t => acceptData(JSON.parse(t), f.name))
+    .catch(() => { document.getElementById('srcStatus').textContent = 'not valid JSON'; });
+});
+
+/* ---------- type selection & sequence ---------- */
+function populateGids() {
+  const counts = {};
+  allAttempts.forEach(e => { if (e.g) counts[e.g] = (counts[e.g] || 0) + 1; });
+  const sel = document.getElementById('gidSel');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  Object.keys(counts).sort((a, b) => counts[b] - counts[a]).forEach(g => {
+    const o = document.createElement('option');
+    o.value = g;
+    o.textContent = (GID_LABEL[g] || g) + ' · ' + counts[g];
+    sel.appendChild(o);
+  });
+  if (prev && counts[prev]) sel.value = prev;
+}
+function rebuildSeq() {
+  stop();
+  const gid = document.getElementById('gidSel').value;
+  const withPower = document.getElementById('chkPower').checked;
+  seq = allAttempts.filter(e => e.g === gid && (withPower || e.k !== 'power'));
+  document.getElementById('scrub').max = seq.length;
+  buildMatrix(gid);
+  seek(seq.length);        // land on the fully-played state so the map is visible at once
+}
+
+/* ---------- matrix ---------- */
+function buildMatrix(gid) {
+  const t = document.getElementById('matrix');
+  let h = '<tr><th></th>' + TENSES.map(tn => '<th>' + TLABEL[tn] + '</th>').join('') + '</tr>';
+  for (let p = 0; p < 6; p++) {
+    h += '<tr><th class="person">' + PERSONS[p] + (p < 5 ? ' <span style="opacity:0.55">· ' + IMP_PERSONS[p] + '</span>' : '') + '</th>';
+    TENSES.forEach(tn => {
+      if (tn === 'infinitive') {
+        if (p === 0) h += '<td rowspan="6" id="c_infinitive_0" class="empty"><span class="bar" style="width:0"></span><div class="cnt">·</div><div class="pct"></div></td>';
+      } else if ((tn === 'imperative_aff' || tn === 'imperative_neg') && p === 5) {
+        h += '<td style="background:transparent"></td>';
+      } else {
+        h += '<td id="c_' + tn + '_' + p + '" class="empty"><span class="bar" style="width:0"></span><div class="cnt">·</div><div class="pct"></div></td>';
+      }
+    });
+    h += '</tr>';
+  }
+  t.innerHTML = h;
+}
+
+function heatColor(rate, n) {
+  // wrong #C0392B -> mid amber -> good #3A7A56, alpha grows with evidence
+  const a = Math.min(1, n / 6) * 0.55;
+  const stops = [[192,57,43],[200,150,50],[58,122,86]];
+  const x = rate * 2;
+  const i = x < 1 ? 0 : 1, f = x - i;
+  const c0 = stops[i], c1 = stops[i+1];
+  const r = Math.round(c0[0] + (c1[0]-c0[0]) * f);
+  const g = Math.round(c0[1] + (c1[1]-c0[1]) * f);
+  const b = Math.round(c0[2] + (c1[2]-c0[2]) * f);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + a.toFixed(3) + ')';
+}
+
+/* ---------- replay engine ---------- */
+function resetState() {
+  pos = 0; cells = {}; circ = new Set();
+}
+function applyOne() {           // advance by one answer (no DOM)
+  const e = seq[pos];
+  const k = cellKey(e);
+  if (!cells[k]) cells[k] = { n: 0, c: 0 };
+  cells[k].n++; if (e.r === 1) cells[k].c++;
+  circ.add(e.v);
+  pos++;
+  return e;
+}
+function seek(target) {
+  target = Math.max(0, Math.min(seq.length, target));
+  if (target < pos) resetState();
+  let last = null;
+  while (pos < target) last = applyOne();
+  render(last, false);
+}
+function step() { if (pos < seq.length) { const e = applyOne(); render(e, true); } else stop(); }
+
+function render(lastE, flash) {
+  const maxN = Math.max(1, ...Object.values(cells).map(c => c.n));
+  document.querySelectorAll('.matrix td[id]').forEach(td => {
+    const k = td.id.slice(2).replace('_', '|');
+    const c = cells[k];
+    const bar = td.querySelector('.bar'), cnt = td.querySelector('.cnt'), pct = td.querySelector('.pct');
+    td.classList.remove('flash');
+    const mark = td.querySelector('.mark'); if (mark) mark.remove();
+    if (!c) {
+      td.classList.add('empty'); td.style.background = '';
+      bar.style.width = '0'; cnt.textContent = '·'; pct.textContent = '';
+      return;
+    }
+    td.classList.remove('empty');
+    const rate = c.c / c.n;
+    td.style.background = heatColor(rate, c.n);
+    bar.style.width = Math.round(100 * c.n / maxN) + '%';
+    cnt.textContent = c.c + '/' + c.n;
+    pct.textContent = Math.round(100 * rate) + '%';
+  });
+  if (lastE) {
+    const td = document.getElementById('c_' + cellKey(lastE).replace('|', '_'));
+    if (td) {
+      const m = document.createElement('span');
+      m.className = 'mark ' + (lastE.r === 1 ? 'g' : 'b');
+      m.textContent = lastE.r === 1 ? '✓' : '✗';
+      td.appendChild(m);
+      if (flash) { void td.offsetWidth; td.classList.add('flash'); }
+    }
+  }
+  // stats
+  document.getElementById('statCirc').textContent = circ.size;
+  document.getElementById('statN').textContent = pos;
+  const tot = Object.values(cells).reduce((s, c) => s + c.n, 0);
+  const cor = Object.values(cells).reduce((s, c) => s + c.c, 0);
+  document.getElementById('statPct').textContent = tot ? Math.round(100 * cor / tot) + '%' : '–';
+  document.getElementById('scrub').value = pos;
+  document.getElementById('posLabel').textContent = pos + ' / ' + seq.length;
+  // current answer line
+  const nl = document.getElementById('nowLine'), nm = document.getElementById('nowMeta');
+  if (lastE) {
+    const pLbl = lastE.tn === 'infinitive' ? 'infinitive'
+      : (lastE.tn.indexOf('imperative') === 0 ? IMP_PERSONS[lastE.p] || ('p' + lastE.p) : PERSONS[lastE.p] || ('p' + lastE.p));
+    nl.innerHTML = '<b>' + escHtml(lastE.v) + '</b> · ' + (TLABEL[lastE.tn] || lastE.tn) + ' · ' + escHtml(pLbl) +
+      ' · <span class="' + (lastE.r === 1 ? 'res-good">✓ correct' : 'res-bad">✗ wrong') + '</span>';
+    nm.textContent = '#' + pos + ' · ' + (lastE.k || '?') + (lastE.due ? ' · due' : '') +
+      (lastE.sq != null ? ' · square ' + lastE.sq : '') + (lastE.typed ? ' · typed' : '') +
+      ' · ' + new Date(lastE.ts).toLocaleString();
+  } else {
+    nl.textContent = pos === 0 ? 'Press ▶ Play or scrub to replay this type\'s history.' : 'Replay position ' + pos + '.';
+    nm.textContent = '';
+  }
+  // verb chips (in order of first appearance)
+  const order = [], counts = {};
+  for (let i = 0; i < pos; i++) { const v = seq[i].v; if (!(v in counts)) { counts[v] = 0; order.push(v); } counts[v]++; }
+  document.getElementById('verbChips').innerHTML = order.map((v, i) =>
+    '<span class="vchip' + (i === order.length - 1 && pos < seq.length ? ' fresh' : '') + '"><b>' + escHtml(v) + '</b> ' + counts[v] + '</span>'
+  ).join('');
+}
+
+/* ---------- transport ---------- */
+function play() {
+  if (timer || pos >= seq.length) return;
+  document.getElementById('btnPlay').textContent = '⏸ Pause';
+  timer = setInterval(() => { step(); if (pos >= seq.length) stop(); }, +document.getElementById('speedSel').value);
+}
+function stop() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  document.getElementById('btnPlay').textContent = '▶ Play';
+}
+document.getElementById('btnPlay').addEventListener('click', () => { if (timer) stop(); else { if (pos >= seq.length) seek(0); play(); } });
+document.getElementById('btnStep').addEventListener('click', () => { stop(); step(); });
+document.getElementById('btnBack').addEventListener('click', () => { stop(); seek(pos - 1); });
+document.getElementById('btnReset').addEventListener('click', () => { stop(); seek(0); });
+document.getElementById('speedSel').addEventListener('change', () => { if (timer) { stop(); play(); } });
+document.getElementById('scrub').addEventListener('input', ev => { stop(); seek(+ev.target.value); });
+document.getElementById('gidSel').addEventListener('change', rebuildSeq);
+document.getElementById('chkPower').addEventListener('change', rebuildSeq);
+document.addEventListener('keydown', ev => {
+  if (document.getElementById('tool').classList.contains('hidden')) return;
+  if (ev.key === ' ') { ev.preventDefault(); if (timer) stop(); else { if (pos >= seq.length) seek(0); play(); } }
+  else if (ev.key === 'ArrowRight') { stop(); step(); }
+  else if (ev.key === 'ArrowLeft') { stop(); seek(pos - 1); }
+  else if (ev.key === 'Home') { stop(); seek(0); }
+});
+
+/* ---------- GitHub cloud loading (vault login, same scheme as conjuga-login) ---------- */
+const GH_OWNER='kntl88', GH_PUBLIC_REPO='spanish-drill', VAULT_PATH='conjuga-vaults.json';
+const SALT_LEN=16, IV_LEN=12, PBKDF2_ITER=310000;
+let gh=null;   // {token, repo, users:[], current}
+
+async function ghDeriveKey(pw, salt) {
+  const km=await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:PBKDF2_ITER, hash:'SHA-256'}, km, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function ghDecrypt(b64, pw) {
+  const p=Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+  return new TextDecoder().decode(await crypto.subtle.decrypt(
+    {name:'AES-GCM', iv:p.slice(SALT_LEN, SALT_LEN+IV_LEN)},
+    await ghDeriveKey(pw, p.slice(0, SALT_LEN)), p.slice(SALT_LEN+IV_LEN)));
+}
+function ghStatus(msg, err) {
+  const el=document.getElementById('ghStatus');
+  el.textContent=msg; el.style.color=err?'var(--bad)':'var(--text-secondary)';
+}
+function b64json(content) {
+  return JSON.parse(decodeURIComponent(escape(atob(content.replace(/\n/g, '')))));
+}
+async function ghApi(path, token) {
+  const res=await fetch('https://api.github.com/repos/'+GH_OWNER+'/'+path+'?t='+Date.now(), {
+    headers: Object.assign({'Accept':'application/vnd.github.v3+json', 'If-None-Match':''}, token?{'Authorization':'Bearer '+token}:{}), cache:'no-store'
+  });
+  if(!res.ok) throw new Error('GitHub '+res.status);
+  return res.json();
+}
+async function ghLogin() {
+  const user=document.getElementById('ghUser').value.trim().toLowerCase();
+  const pw=document.getElementById('ghPw').value;
+  if(!user || !pw) { ghStatus('Enter username and password', true); return; }
+  ghStatus('Checking\u2026');
+  let vaults;
+  try { vaults=b64json((await ghApi(GH_PUBLIC_REPO+'/contents/'+VAULT_PATH)).content); }
+  catch(e) { ghStatus('Could not load account list', true); return; }
+  const entry=vaults[user];
+  if(!entry || !entry.encrypted) { ghStatus('Unknown user', true); return; }
+  let creds;
+  try { creds=JSON.parse(await ghDecrypt(entry.encrypted, pw)); }
+  catch(e) { ghStatus('Wrong password', true); document.getElementById('ghPw').value=''; return; }
+  if(!creds.token) { ghStatus('Corrupt account entry', true); return; }
+  gh={token:creds.token, repo:creds.repo||'Spanish', users:[], current:null};
+  ghStatus('Listing players\u2026');
+  try {
+    const dir=await ghApi(gh.repo+'/contents/users', gh.token);
+    gh.users=dir.filter(x=>x.type==='dir').map(x=>x.name);
+  } catch(e) { gh.users=[user]; }
+  if(!gh.users.length) { ghStatus('No player data found', true); return; }
+  ghLoadUser(gh.users.indexOf(user)!==-1 ? user : gh.users[0]);
+}
+async function ghLoadUser(name) {
+  if(!gh) return;
+  ghStatus('Loading '+name+'\u2026');
+  try {
+    const f=await ghApi(gh.repo+'/contents/users/'+name+'/conjuga-attempts.json', gh.token);
+    gh.current=name;
+    acceptData(b64json(f.content), 'cloud \u00b7 '+name);
+    renderUserPick();
+  } catch(e) { ghStatus('Could not load '+name+"'s data ("+e.message+')', true); }
+}
+function renderUserPick() {
+  if(!gh || gh.users.length<2) return;
+  const el=document.getElementById('srcStatus');
+  const pick=document.createElement('span');
+  pick.className='userpick';
+  gh.users.forEach(u=>{
+    const b=document.createElement('button');
+    b.className='ctl'+(u===gh.current?' cur':'');
+    b.textContent=u;
+    b.addEventListener('click', ()=>ghLoadUser(u));
+    pick.appendChild(b);
+  });
+  el.appendChild(pick);
+}
+document.getElementById('ghGo').addEventListener('click', ghLogin);
+document.getElementById('ghPw').addEventListener('keydown', ev=>{ if(ev.key==='Enter') ghLogin(); });
+
+tryAutoLoad();
+</script>
