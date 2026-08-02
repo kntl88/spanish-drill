@@ -207,6 +207,13 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
         <label for="gScope">Verb type</label>
         <select id="gScope"></select>
       </div>
+      <div>
+        <label for="gAxis">X-axis</label>
+        <select id="gAxis">
+          <option value="attempt" selected>Per attempt</option>
+          <option value="time">Calendar</option>
+        </select>
+      </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
     <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · x: attempts · y: climbs one step per correct answer, stays flat on a wrong · the faint diagonal is a perfect run — the wider the gap below it, the more trouble · red ticks mark the wrongs · <b>click a tense to overlay its yo / tú / él… lines in one graph</b></div>
@@ -553,8 +560,13 @@ function graphData() {
   return allAttempts.filter(e=>(!scope || e.g===scope) && (withPower || e.k!=='power'));
 }
 let stairBig=null;
+let gAxisMode='attempt', gT0=0, gT1=1;
 function renderGraphs() {
   const data=graphData();
+  gAxisMode=document.getElementById('gAxis').value||'attempt';
+  gT0=data.length?Math.min(...data.map(e=>e.ts)):0;
+  gT1=data.length?Math.max(...data.map(e=>e.ts)):1;
+  if(gT1<=gT0) gT1=gT0+1;
   const grid=document.getElementById('stairGrid');
   const byTense={};
   data.forEach(e=>{ (byTense[e.tn]=byTense[e.tn]||[]).push(e); });
@@ -616,6 +628,8 @@ function drawStairMulti(cvId, series, height) {
   const iw=W-padL-padR, ih=H-padT-padB;
   const border=cssVar('--border'), muted=cssVar('--text-muted');
   const maxN=Math.max(1, ...series.map(s=>s.attempts.length));
+  const timeMode = gAxisMode==='time';
+  const tx=ts=>padL+iw*((ts-gT0)/(gT1-gT0));
   const X=i=>padL+iw*(i/maxN);
   const Y=v=>padT+ih*(1-v/maxN);
   ctx.font='9px -apple-system, sans-serif';
@@ -624,24 +638,36 @@ function drawStairMulti(cvId, series, height) {
   ctx.fillStyle=muted; ctx.textAlign='right';
   ctx.fillText(String(maxN), padL-3, Y(maxN)+7);
   ctx.fillText('0', padL-3, Y(0)+3);
-  ctx.textAlign='center';
-  ctx.fillText('attempts per person (longest: '+maxN+')', padL+iw/2, H-3);
-  ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
-  ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(maxN),Y(maxN)); ctx.stroke();
-  ctx.setLineDash([]); ctx.globalAlpha=1;
+  if(timeMode) {
+    ctx.textAlign='left'; ctx.fillText(fmtDay(gT0), padL, H-3);
+    ctx.textAlign='right'; ctx.fillText(fmtDay(gT1), W-padR, H-3);
+    ctx.textAlign='center'; ctx.fillText('calendar time', padL+iw/2, H-3);
+  } else {
+    ctx.textAlign='center';
+    ctx.fillText('attempts per person (longest: '+maxN+')', padL+iw/2, H-3);
+    ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(maxN),Y(maxN)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  }
   series.forEach((s,si)=>{
     const off=(si-(series.length-1)/2)*2.5;   // few px sideways so identical paths separate
     let y=0;
     ctx.strokeStyle=s.color; ctx.lineWidth=1.7;
-    ctx.beginPath(); ctx.moveTo(X(0)+off, Y(0));
+    ctx.beginPath();
+    ctx.moveTo((timeMode ? tx(s.attempts[0].ts) : X(0))+off, Y(0));
     s.attempts.forEach((e,i)=>{
-      ctx.lineTo(X(i+1)+off, Y(y));
-      if(e.r===1) { y++; ctx.lineTo(X(i+1)+off, Y(y)); }
+      const x=(timeMode ? tx(e.ts) : X(i+1))+off;
+      ctx.lineTo(x, Y(y));
+      if(e.r===1) { y++; ctx.lineTo(x, Y(y)); }
     });
     ctx.stroke();
     ctx.fillStyle=s.color;
-    ctx.beginPath(); ctx.arc(X(s.attempts.length)+off, Y(y), 2.8, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc((timeMode ? tx(s.attempts[s.attempts.length-1].ts) : X(s.attempts.length))+off, Y(y), 2.8, 0, 7); ctx.fill();
   });
+}
+function fmtDay(ts) {
+  const d=new Date(ts);
+  return (d.getMonth()+1)+'/'+d.getDate();
 }
 function drawStair(cvId, attempts, height) {
   const cv=document.getElementById(cvId);
@@ -657,45 +683,54 @@ function drawStair(cvId, attempts, height) {
   const accent=cssVar('--accent'), bad=cssVar('--bad');
   const N=attempts.length;
   const maxY=Math.max(1,N);
+  const timeMode = gAxisMode==='time';
+  const tx=ts=>padL+iw*((ts-gT0)/(gT1-gT0));
   const X=i=>padL+iw*(N<2?1:(i/N));
+  const px=(i)=>timeMode ? tx(attempts[Math.min(i,N-1)].ts) : X(i);   // x of attempt boundary
   const Y=v=>padT+ih*(1-v/maxY);
   ctx.font='9px -apple-system, sans-serif';
-  // frame + halfway gridline
   ctx.strokeStyle=border; ctx.lineWidth=1;
   ctx.strokeRect(padL,padT,iw,ih);
   ctx.fillStyle=muted; ctx.textAlign='right';
   ctx.fillText(String(maxY), padL-3, Y(maxY)+7);
   ctx.fillText('0', padL-3, Y(0)+3);
   ctx.textAlign='center';
-  ctx.fillText(N+' attempts', padL+iw/2, H-3);
-  // perfect-run diagonal
-  ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
-  ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(N),Y(N)); ctx.stroke();
-  ctx.setLineDash([]); ctx.globalAlpha=1;
-  // staircase
+  if(timeMode) {
+    ctx.textAlign='left'; ctx.fillText(fmtDay(gT0), padL, H-3);
+    ctx.textAlign='right'; ctx.fillText(fmtDay(gT1), W-padR, H-3);
+    ctx.textAlign='center'; ctx.fillText(N+' attempts', padL+iw/2, H-3);
+  } else {
+    ctx.fillText(N+' attempts', padL+iw/2, H-3);
+  }
+  if(!timeMode) {
+    ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(N),Y(N)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  }
   let y=0;
   ctx.strokeStyle=accent; ctx.lineWidth=1.8;
-  ctx.beginPath(); ctx.moveTo(X(0),Y(0));
-  const wrongs=[];
+  ctx.beginPath();
+  ctx.moveTo(timeMode ? tx(attempts[0].ts) : X(0), Y(0));
+  const wrongXs=[];
   attempts.forEach((e,i)=>{
-    ctx.lineTo(X(i+1),Y(y));            // run flat across this attempt
-    if(e.r===1) { y++; ctx.lineTo(X(i+1),Y(y)); }   // then step up if correct
-    else wrongs.push(i);
+    const x = timeMode ? tx(e.ts) : X(i+1);
+    ctx.lineTo(x, Y(y));
+    if(e.r===1) { y++; ctx.lineTo(x, Y(y)); }
+    else wrongXs.push(x);
   });
+  if(!timeMode) { /* nothing */ }
   ctx.stroke();
-  // red ticks under the flats
   ctx.strokeStyle=bad; ctx.lineWidth=1.6;
-  wrongs.forEach(i=>{
-    const x=(X(i)+X(i+1))/2;
+  wrongXs.forEach(x=>{
     ctx.beginPath(); ctx.moveTo(x, padT+ih-1); ctx.lineTo(x, padT+ih-6); ctx.stroke();
   });
-  // endpoint
   ctx.fillStyle=accent;
-  ctx.beginPath(); ctx.arc(X(N),Y(y),3,0,7); ctx.fill();
+  ctx.beginPath(); ctx.arc(timeMode ? tx(attempts[N-1].ts) : X(N), Y(y), 3, 0, 7); ctx.fill();
 }
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
 document.getElementById('tabGraphs').addEventListener('click', ()=>showView('graphs'));
 document.getElementById('gScope').addEventListener('change', renderGraphs);
+document.getElementById('gAxis').addEventListener('change', renderGraphs);
 document.getElementById('gPower').addEventListener('change', renderGraphs);
 if(window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(!document.getElementById('graphsView').classList.contains('hidden')) renderGraphs(); });
 window.addEventListener('resize', ()=>{ if(!document.getElementById('graphsView').classList.contains('hidden')) renderGraphs(); });
