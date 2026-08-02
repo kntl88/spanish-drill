@@ -102,11 +102,16 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 .tab.cur { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .gsub { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5; }
-.stairs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-.stair { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px 8px; }
-.stair h3 { font-family: var(--font-display); font-size: 0.95rem; font-weight: 600; margin: 0; }
-.stair .meta { font-size: 0.72rem; color: var(--text-muted); margin: 1px 0 6px; font-variant-numeric: tabular-nums; }
+.stairs { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.stair { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 10px; cursor: pointer; }
+.stair:hover { border-color: var(--accent); }
+.stair.big { grid-column: 1 / -1; cursor: zoom-out; }
+.stair.empty-t { opacity: 0.55; cursor: default; }
+.stair.empty-t:hover { border-color: var(--border); }
+.stair h3 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; margin: 0; }
+.stair .meta { font-size: 0.75rem; color: var(--text-muted); margin: 1px 0 8px; font-variant-numeric: tabular-nums; }
 .stair canvas { width: 100%; display: block; }
+.stair .none { height: 210px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.82rem; border: 1px dashed var(--border); border-radius: 8px; }
 </style>
 
 <div class="topbar">
@@ -201,7 +206,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense \u00b7 x: attempts \u00b7 y: climbs one step per correct answer, stays flat on a wrong \u00b7 the faint diagonal is a perfect run \u2014 the wider the gap below it, the more trouble \u00b7 red ticks mark the wrongs</div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · x: attempts · y: climbs one step per correct answer, stays flat on a wrong · the faint diagonal is a perfect run — the wider the gap below it, the more trouble · red ticks mark the wrongs · <b>click a graph to enlarge it</b></div>
     <div class="stairs" id="stairGrid"></div>
   </div>
 </div>
@@ -544,25 +549,41 @@ function graphData() {
   const withPower=document.getElementById('gPower').checked;
   return allAttempts.filter(e=>(!scope || e.g===scope) && (withPower || e.k!=='power'));
 }
+let stairBig=null;
 function renderGraphs() {
   const data=graphData();
   const grid=document.getElementById('stairGrid');
   const byTense={};
   data.forEach(e=>{ (byTense[e.tn]=byTense[e.tn]||[]).push(e); });
-  const order=TENSES.filter(tn=>byTense[tn]).concat(Object.keys(byTense).filter(tn=>TENSES.indexOf(tn)===-1));
-  if(!order.length) { grid.innerHTML='<div class="gsub">no answers in scope</div>'; return; }
+  const order=TENSES.concat(Object.keys(byTense).filter(tn=>TENSES.indexOf(tn)===-1));
   grid.innerHTML=order.map(tn=>{
-    const a=byTense[tn], c=a.filter(e=>e.r===1).length;
-    return '<div class="stair"><h3>'+escHtml(TLABEL[tn]||tn)+'</h3>'+
-      '<div class="meta">'+a.length+' attempts \u00b7 '+c+' correct \u00b7 '+Math.round(100*c/a.length)+'%</div>'+
-      '<canvas id="stair_'+tn+'" height="150"></canvas></div>';
+    const a=byTense[tn]||[];
+    if(!a.length) {
+      return '<div class="stair empty-t"><h3>'+escHtml(TLABEL[tn]||tn)+'</h3>'+
+        '<div class="meta">0 attempts</div>'+
+        '<div class="none">not practiced yet in this scope</div></div>';
+    }
+    const c=a.filter(e=>e.r===1).length;
+    const big = stairBig===tn;
+    return '<div class="stair'+(big?' big':'')+'" data-tn="'+tn+'" title="'+(big?'Click to shrink':'Click to enlarge')+'">'+
+      '<h3>'+escHtml(TLABEL[tn]||tn)+'</h3>'+
+      '<div class="meta">'+a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%</div>'+
+      '<canvas id="stair_'+tn+'" height="'+(big?340:210)+'"></canvas></div>';
   }).join('');
-  order.forEach(tn=>drawStair('stair_'+tn, byTense[tn]));
+  order.forEach(tn=>{ if(byTense[tn]) drawStair('stair_'+tn, byTense[tn], stairBig===tn?340:210); });
+  grid.querySelectorAll('.stair[data-tn]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const tn=el.getAttribute('data-tn');
+      stairBig = (stairBig===tn) ? null : tn;
+      renderGraphs();
+      if(stairBig===tn) el.scrollIntoView({behavior:'smooth', block:'nearest'});
+    });
+  });
 }
-function drawStair(cvId, attempts) {
+function drawStair(cvId, attempts, height) {
   const cv=document.getElementById(cvId);
   if(!cv) return;
-  const W=cv.clientWidth||240, H=150;
+  const W=cv.clientWidth||340, H=height||210;
   const dpr=window.devicePixelRatio||1;
   cv.width=W*dpr; cv.height=H*dpr;
   const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
