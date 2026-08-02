@@ -216,7 +216,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers (axis tops at the total ✓) · flat = a wrong (red tick) · per-attempt mode: dashed diagonal = perfect run · calendar mode: x is real time, idle gaps compressed to a dashed break, day labels per session · <b>click a tense to overlay its yo / tú / él… lines</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers (axis tops at the total ✓) · flat = a wrong (red tick) · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break, day labels per session · <b>click a tense to overlay its yo / tú / él… lines</b></div>
     <div class="stairs" id="stairGrid"></div>
   </div>
 </div>
@@ -706,6 +706,10 @@ function drawStair(cvId, attempts, height) {
     const reach=Math.min(N,maxY);
     ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
     ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach),Y(reach)); ctx.stroke();
+    // the program goal: a 0.9-slope trajectory
+    const reach9=Math.min(N, maxY/0.9);
+    ctx.strokeStyle=cssVar('--good'); ctx.globalAlpha=0.55; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach9),Y(reach9*0.9)); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha=1;
   }
   let y=0;
@@ -750,6 +754,9 @@ function drawStairMulti(cvId, series, height) {
     const reach=Math.min(maxN,maxY);
     ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
     ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach),Y(reach)); ctx.stroke();
+    const reach9=Math.min(maxN, maxY/0.9);
+    ctx.strokeStyle=cssVar('--good'); ctx.globalAlpha=0.55; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach9),Y(reach9*0.9)); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha=1;
   }
   series.forEach((s,si)=>{
