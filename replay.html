@@ -216,7 +216,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · x: attempts · y: climbs one step per correct answer, stays flat on a wrong · the faint diagonal is a perfect run — the wider the gap below it, the more trouble · red ticks mark the wrongs · <b>click a tense to overlay its yo / tú / él… lines in one graph</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers (axis tops at the total ✓) · flat = a wrong (red tick) · per-attempt mode: dashed diagonal = perfect run · calendar mode: x is real time, idle gaps compressed to a dashed break, day labels per session · <b>click a tense to overlay its yo / tú / él… lines</b></div>
     <div class="stairs" id="stairGrid"></div>
   </div>
 </div>
@@ -560,13 +560,51 @@ function graphData() {
   return allAttempts.filter(e=>(!scope || e.g===scope) && (withPower || e.k!=='power'));
 }
 let stairBig=null;
-let gAxisMode='attempt', gT0=0, gT1=1;
+let gAxisMode='attempt', gSeg=[];
+const SESSION_GAP=30*60*1000, SEG_GAP_PX=16, SEG_MIN_PX=10;
+
+function buildSessions(data) {
+  gSeg=[];
+  if(!data.length) return;
+  let s={t0:data[0].ts, t1:data[0].ts};
+  for(let i=1;i<data.length;i++) {
+    if(data[i].ts-data[i-1].ts>SESSION_GAP) { gSeg.push(s); s={t0:data[i].ts, t1:data[i].ts}; }
+    else s.t1=data[i].ts;
+  }
+  gSeg.push(s);
+}
+function segLayout(padL, iw) {
+  const n=Math.max(1,gSeg.length);
+  const avail=Math.max(0, iw - SEG_GAP_PX*(n-1) - SEG_MIN_PX*n);
+  const totDur=gSeg.reduce((a,s)=>a+Math.max(1,s.t1-s.t0),0)||1;
+  let x=padL; const out=[];
+  gSeg.forEach(s=>{
+    const w=SEG_MIN_PX + avail*(Math.max(1,s.t1-s.t0)/totDur);
+    out.push({t0:s.t0, t1:s.t1, x0:x, w:w});
+    x+=w+SEG_GAP_PX;
+  });
+  return out;
+}
+function txFor(layout) {
+  return ts=>{
+    for(let i=0;i<layout.length;i++) {
+      const L=layout[i];
+      if(ts<=L.t1 || i===layout.length-1) {
+        const d=Math.max(1,L.t1-L.t0);
+        return L.x0 + L.w*Math.min(1,Math.max(0,(ts-L.t0)/d));
+      }
+    }
+    return layout.length ? layout[0].x0 : 0;
+  };
+}
+function fmtDay(ts) {
+  const d=new Date(ts);
+  return (d.getMonth()+1)+'/'+d.getDate();
+}
 function renderGraphs() {
   const data=graphData();
   gAxisMode=document.getElementById('gAxis').value||'attempt';
-  gT0=data.length?Math.min(...data.map(e=>e.ts)):0;
-  gT1=data.length?Math.max(...data.map(e=>e.ts)):1;
-  if(gT1<=gT0) gT1=gT0+1;
+  buildSessions(data);
   const grid=document.getElementById('stairGrid');
   const byTense={};
   data.forEach(e=>{ (byTense[e.tn]=byTense[e.tn]||[]).push(e); });
@@ -583,7 +621,7 @@ function renderGraphs() {
     let h='<div class="stair'+(big?' big':'')+'" data-tn="'+tn+'" title="'+(big?'Click to close the person breakdown':'Click to see yo / tú / él…')+'">'+
       '<h3>'+escHtml(TLABEL[tn]||tn)+'</h3>'+
       '<div class="meta">'+a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%'+(big?'':' · click for persons')+'</div>'+
-      '<canvas id="stair_'+tn+'" height="'+(big?260:210)+'"></canvas>';
+      '<canvas id="stair_'+tn+'" height="'+(big?320:210)+'"></canvas>';
     if(big && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       h+='<div class="plegend">'+labels.map((lbl,p)=>{
@@ -616,58 +654,32 @@ function renderGraphs() {
   });
 }
 const PERSON_COLORS=['#C9A44A','#3A7A56','#C0392B','#2E6E8E','#8E5A9E','#B8762C'];
-function drawStairMulti(cvId, series, height) {
-  const cv=document.getElementById(cvId);
-  if(!cv) return;
-  const W=cv.clientWidth||340, H=height||320;
-  const dpr=window.devicePixelRatio||1;
-  cv.width=W*dpr; cv.height=H*dpr;
-  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
-  ctx.clearRect(0,0,W,H);
-  const padL=26, padR=8, padT=6, padB=16;
+function chartFrame(ctx, W, H, padL, padR, padT, padB, maxY, timeMode, layout, xLabel) {
   const iw=W-padL-padR, ih=H-padT-padB;
   const border=cssVar('--border'), muted=cssVar('--text-muted');
-  const maxN=Math.max(1, ...series.map(s=>s.attempts.length));
-  const timeMode = gAxisMode==='time';
-  const tx=ts=>padL+iw*((ts-gT0)/(gT1-gT0));
-  const X=i=>padL+iw*(i/maxN);
-  const Y=v=>padT+ih*(1-v/maxN);
   ctx.font='9px -apple-system, sans-serif';
   ctx.strokeStyle=border; ctx.lineWidth=1;
   ctx.strokeRect(padL,padT,iw,ih);
   ctx.fillStyle=muted; ctx.textAlign='right';
-  ctx.fillText(String(maxN), padL-3, Y(maxN)+7);
-  ctx.fillText('0', padL-3, Y(0)+3);
-  if(timeMode) {
-    ctx.textAlign='left'; ctx.fillText(fmtDay(gT0), padL, H-3);
-    ctx.textAlign='right'; ctx.fillText(fmtDay(gT1), W-padR, H-3);
-    ctx.textAlign='center'; ctx.fillText('calendar time', padL+iw/2, H-3);
-  } else {
-    ctx.textAlign='center';
-    ctx.fillText('attempts per person (longest: '+maxN+')', padL+iw/2, H-3);
-    ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(maxN),Y(maxN)); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha=1;
-  }
-  series.forEach((s,si)=>{
-    const off=(si-(series.length-1)/2)*2.5;   // few px sideways so identical paths separate
-    let y=0;
-    ctx.strokeStyle=s.color; ctx.lineWidth=1.7;
-    ctx.beginPath();
-    ctx.moveTo((timeMode ? tx(s.attempts[0].ts) : X(0))+off, Y(0));
-    s.attempts.forEach((e,i)=>{
-      const x=(timeMode ? tx(e.ts) : X(i+1))+off;
-      ctx.lineTo(x, Y(y));
-      if(e.r===1) { y++; ctx.lineTo(x, Y(y)); }
+  ctx.fillText(String(maxY)+' ✓', padL-3, padT+7);
+  ctx.fillText('0', padL-3, padT+ih+3);
+  if(timeMode && layout) {
+    // day label under each session, dashed divider in each gap
+    layout.forEach((L,i)=>{
+      ctx.fillStyle=muted; ctx.textAlign='left';
+      ctx.fillText(fmtDay(L.t0), L.x0, H-3);
+      if(i>0) {
+        const gx=L.x0-SEG_GAP_PX/2;
+        ctx.strokeStyle=muted; ctx.globalAlpha=0.5; ctx.setLineDash([3,4]);
+        ctx.beginPath(); ctx.moveTo(gx,padT); ctx.lineTo(gx,padT+ih); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha=1;
+      }
     });
-    ctx.stroke();
-    ctx.fillStyle=s.color;
-    ctx.beginPath(); ctx.arc((timeMode ? tx(s.attempts[s.attempts.length-1].ts) : X(s.attempts.length))+off, Y(y), 2.8, 0, 7); ctx.fill();
-  });
-}
-function fmtDay(ts) {
-  const d=new Date(ts);
-  return (d.getMonth()+1)+'/'+d.getDate();
+  } else {
+    ctx.fillStyle=muted; ctx.textAlign='center';
+    ctx.fillText(xLabel, padL+iw/2, H-3);
+  }
+  return {iw:iw, ih:ih};
 }
 function drawStair(cvId, attempts, height) {
   const cv=document.getElementById(cvId);
@@ -677,34 +689,23 @@ function drawStair(cvId, attempts, height) {
   cv.width=W*dpr; cv.height=H*dpr;
   const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,W,H);
-  const padL=26, padR=6, padT=6, padB=16;
-  const iw=W-padL-padR, ih=H-padT-padB;
-  const border=cssVar('--border'), muted=cssVar('--text-muted');
-  const accent=cssVar('--accent'), bad=cssVar('--bad');
+  const padL=30, padR=6, padT=6, padB=16;
+  const accent=cssVar('--accent'), bad=cssVar('--bad'), muted=cssVar('--text-muted');
   const N=attempts.length;
-  const maxY=Math.max(1,N);
+  const corrects=attempts.filter(e=>e.r===1).length;
+  const maxY=Math.max(1,corrects);
   const timeMode = gAxisMode==='time';
-  const tx=ts=>padL+iw*((ts-gT0)/(gT1-gT0));
-  const X=i=>padL+iw*(N<2?1:(i/N));
-  const px=(i)=>timeMode ? tx(attempts[Math.min(i,N-1)].ts) : X(i);   // x of attempt boundary
+  const layout = timeMode ? segLayout(padL, W-padL-padR) : null;
+  const tx = timeMode ? txFor(layout) : null;
+  const dims=chartFrame(ctx, W, H, padL, padR, padT, padB, maxY, timeMode, layout, N+' attempts');
+  const iw=dims.iw, ih=dims.ih;
+  const X=i=>padL+iw*(i/Math.max(1,N));
   const Y=v=>padT+ih*(1-v/maxY);
-  ctx.font='9px -apple-system, sans-serif';
-  ctx.strokeStyle=border; ctx.lineWidth=1;
-  ctx.strokeRect(padL,padT,iw,ih);
-  ctx.fillStyle=muted; ctx.textAlign='right';
-  ctx.fillText(String(maxY), padL-3, Y(maxY)+7);
-  ctx.fillText('0', padL-3, Y(0)+3);
-  ctx.textAlign='center';
-  if(timeMode) {
-    ctx.textAlign='left'; ctx.fillText(fmtDay(gT0), padL, H-3);
-    ctx.textAlign='right'; ctx.fillText(fmtDay(gT1), W-padR, H-3);
-    ctx.textAlign='center'; ctx.fillText(N+' attempts', padL+iw/2, H-3);
-  } else {
-    ctx.fillText(N+' attempts', padL+iw/2, H-3);
-  }
   if(!timeMode) {
+    // perfect run: one step up per attempt, clipped at the top
+    const reach=Math.min(N,maxY);
     ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(N),Y(N)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach),Y(reach)); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha=1;
   }
   let y=0;
@@ -718,7 +719,6 @@ function drawStair(cvId, attempts, height) {
     if(e.r===1) { y++; ctx.lineTo(x, Y(y)); }
     else wrongXs.push(x);
   });
-  if(!timeMode) { /* nothing */ }
   ctx.stroke();
   ctx.strokeStyle=bad; ctx.lineWidth=1.6;
   wrongXs.forEach(x=>{
@@ -726,6 +726,47 @@ function drawStair(cvId, attempts, height) {
   });
   ctx.fillStyle=accent;
   ctx.beginPath(); ctx.arc(timeMode ? tx(attempts[N-1].ts) : X(N), Y(y), 3, 0, 7); ctx.fill();
+}
+function drawStairMulti(cvId, series, height) {
+  const cv=document.getElementById(cvId);
+  if(!cv) return;
+  const W=cv.clientWidth||340, H=height||320;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const padL=30, padR=8, padT=6, padB=16;
+  const muted=cssVar('--text-muted');
+  const maxN=Math.max(1, ...series.map(s=>s.attempts.length));
+  const maxY=Math.max(1, ...series.map(s=>s.attempts.filter(e=>e.r===1).length));
+  const timeMode = gAxisMode==='time';
+  const layout = timeMode ? segLayout(padL, W-padL-padR) : null;
+  const tx = timeMode ? txFor(layout) : null;
+  const dims=chartFrame(ctx, W, H, padL, padR, padT, padB, maxY, timeMode, layout, 'attempts per person (longest: '+maxN+')');
+  const iw=dims.iw, ih=dims.ih;
+  const X=i=>padL+iw*(i/maxN);
+  const Y=v=>padT+ih*(1-v/maxY);
+  if(!timeMode) {
+    const reach=Math.min(maxN,maxY);
+    ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach),Y(reach)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  }
+  series.forEach((s,si)=>{
+    const off=(si-(series.length-1)/2)*2.5;
+    let y=0;
+    ctx.strokeStyle=s.color; ctx.lineWidth=1.7;
+    ctx.beginPath();
+    ctx.moveTo((timeMode ? tx(s.attempts[0].ts) : X(0))+off, Y(0));
+    s.attempts.forEach((e,i)=>{
+      const x=(timeMode ? tx(e.ts) : X(i+1))+off;
+      ctx.lineTo(x, Y(y));
+      if(e.r===1) { y++; ctx.lineTo(x, Y(y)); }
+    });
+    ctx.stroke();
+    ctx.fillStyle=s.color;
+    ctx.beginPath(); ctx.arc((timeMode ? tx(s.attempts[s.attempts.length-1].ts) : X(s.attempts.length))+off, Y(y), 2.8, 0, 7); ctx.fill();
+  });
 }
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
 document.getElementById('tabGraphs').addEventListener('click', ()=>showView('graphs'));
