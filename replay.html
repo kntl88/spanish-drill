@@ -112,12 +112,9 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 .stair .meta { font-size: 0.75rem; color: var(--text-muted); margin: 1px 0 8px; font-variant-numeric: tabular-nums; }
 .stair canvas { width: 100%; display: block; }
 .stair .none { height: 210px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.82rem; border: 1px dashed var(--border); border-radius: 8px; }
-.plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; }
-.pstair { border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px 5px; background: var(--surface-dim); }
-.pstair h4 { font-size: 0.82rem; font-weight: 600; margin: 0; color: var(--text); }
-.pstair .meta { font-size: 0.68rem; color: var(--text-muted); margin: 0 0 4px; font-variant-numeric: tabular-nums; }
-.pstair canvas { width: 100%; display: block; }
-.pstair .pnone { height: 90px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.72rem; }
+.plegend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 0.78rem; color: var(--text-secondary); }
+.plegend .pl { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.plegend .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
 </style>
 
 <div class="topbar">
@@ -212,7 +209,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · x: attempts · y: climbs one step per correct answer, stays flat on a wrong · the faint diagonal is a perfect run — the wider the gap below it, the more trouble · red ticks mark the wrongs · <b>click a tense to open its yo / tú / él… breakdown</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · x: attempts · y: climbs one step per correct answer, stays flat on a wrong · the faint diagonal is a perfect run — the wider the gap below it, the more trouble · red ticks mark the wrongs · <b>click a tense to overlay its yo / tú / él… lines in one graph</b></div>
     <div class="stairs" id="stairGrid"></div>
   </div>
 </div>
@@ -577,26 +574,24 @@ function renderGraphs() {
       '<canvas id="stair_'+tn+'" height="'+(big?260:210)+'"></canvas>';
     if(big && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
-      h+='<div class="plist">'+labels.map((lbl,p)=>{
+      h+='<div class="plegend">'+labels.map((lbl,p)=>{
         const pa=a.filter(e=>String(e.p)===String(p));
         const pc=pa.filter(e=>e.r===1).length;
-        if(!pa.length) return '<div class="pstair"><h4>'+escHtml(lbl)+'</h4><div class="meta">0 attempts</div><div class="pnone">—</div></div>';
-        return '<div class="pstair"><h4>'+escHtml(lbl)+'</h4>'+
-          '<div class="meta">'+pc+'/'+pa.length+' · '+Math.round(100*pc/pa.length)+'%</div>'+
-          '<canvas id="stair_'+tn+'_p'+p+'" height="100"></canvas></div>';
+        return '<span class="pl"><span class="sw" style="background:'+PERSON_COLORS[p]+'"></span>'+escHtml(lbl)+
+          (pa.length?(' '+pc+'/'+pa.length):' —')+'</span>';
       }).join('')+'</div>';
     }
     return h+'</div>';
   }).join('');
   order.forEach(tn=>{
     if(!byTense[tn]) return;
-    drawStair('stair_'+tn, byTense[tn], stairBig===tn?260:210);
     if(stairBig===tn && tn!=='infinitive') {
-      const nP = tn.indexOf('imperative')===0 ? 5 : 6;
-      for(let p=0;p<nP;p++) {
-        const pa=byTense[tn].filter(e=>String(e.p)===String(p));
-        if(pa.length) drawStair('stair_'+tn+'_p'+p, pa, 100);
-      }
+      const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
+      const series=labels.map((lbl,p)=>({label:lbl, color:PERSON_COLORS[p],
+        attempts:byTense[tn].filter(e=>String(e.p)===String(p))})).filter(s=>s.attempts.length);
+      drawStairMulti('stair_'+tn, series, 320);
+    } else {
+      drawStair('stair_'+tn, byTense[tn], stairBig===tn?320:210);
     }
   });
   grid.querySelectorAll('.stair[data-tn]').forEach(el=>{
@@ -606,6 +601,46 @@ function renderGraphs() {
       renderGraphs();
       if(stairBig===tn) el.scrollIntoView({behavior:'smooth', block:'nearest'});
     });
+  });
+}
+const PERSON_COLORS=['#C9A44A','#3A7A56','#C0392B','#2E6E8E','#8E5A9E','#B8762C'];
+function drawStairMulti(cvId, series, height) {
+  const cv=document.getElementById(cvId);
+  if(!cv) return;
+  const W=cv.clientWidth||340, H=height||320;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const padL=26, padR=8, padT=6, padB=16;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const border=cssVar('--border'), muted=cssVar('--text-muted');
+  const maxN=Math.max(1, ...series.map(s=>s.attempts.length));
+  const X=i=>padL+iw*(i/maxN);
+  const Y=v=>padT+ih*(1-v/maxN);
+  ctx.font='9px -apple-system, sans-serif';
+  ctx.strokeStyle=border; ctx.lineWidth=1;
+  ctx.strokeRect(padL,padT,iw,ih);
+  ctx.fillStyle=muted; ctx.textAlign='right';
+  ctx.fillText(String(maxN), padL-3, Y(maxN)+7);
+  ctx.fillText('0', padL-3, Y(0)+3);
+  ctx.textAlign='center';
+  ctx.fillText('attempts per person (longest: '+maxN+')', padL+iw/2, H-3);
+  ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(maxN),Y(maxN)); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha=1;
+  series.forEach((s,si)=>{
+    const off=(si-(series.length-1)/2)*2.5;   // few px sideways so identical paths separate
+    let y=0;
+    ctx.strokeStyle=s.color; ctx.lineWidth=1.7;
+    ctx.beginPath(); ctx.moveTo(X(0)+off, Y(0));
+    s.attempts.forEach((e,i)=>{
+      ctx.lineTo(X(i+1)+off, Y(y));
+      if(e.r===1) { y++; ctx.lineTo(X(i+1)+off, Y(y)); }
+    });
+    ctx.stroke();
+    ctx.fillStyle=s.color;
+    ctx.beginPath(); ctx.arc(X(s.attempts.length)+off, Y(y), 2.8, 0, 7); ctx.fill();
   });
 }
 function drawStair(cvId, attempts, height) {
