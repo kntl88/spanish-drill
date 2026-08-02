@@ -112,6 +112,12 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 .stair .meta { font-size: 0.75rem; color: var(--text-muted); margin: 1px 0 8px; font-variant-numeric: tabular-nums; }
 .stair canvas { width: 100%; display: block; }
 .stair .none { height: 210px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.82rem; border: 1px dashed var(--border); border-radius: 8px; }
+.plist { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; }
+.pstair { border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px 5px; background: var(--surface-dim); }
+.pstair h4 { font-size: 0.82rem; font-weight: 600; margin: 0; color: var(--text); }
+.pstair .meta { font-size: 0.68rem; color: var(--text-muted); margin: 0 0 4px; font-variant-numeric: tabular-nums; }
+.pstair canvas { width: 100%; display: block; }
+.pstair .pnone { height: 90px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 0.72rem; }
 </style>
 
 <div class="topbar">
@@ -206,7 +212,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · x: attempts · y: climbs one step per correct answer, stays flat on a wrong · the faint diagonal is a perfect run — the wider the gap below it, the more trouble · red ticks mark the wrongs · <b>click a graph to enlarge it</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · x: attempts · y: climbs one step per correct answer, stays flat on a wrong · the faint diagonal is a perfect run — the wider the gap below it, the more trouble · red ticks mark the wrongs · <b>click a tense to open its yo / tú / él… breakdown</b></div>
     <div class="stairs" id="stairGrid"></div>
   </div>
 </div>
@@ -565,12 +571,34 @@ function renderGraphs() {
     }
     const c=a.filter(e=>e.r===1).length;
     const big = stairBig===tn;
-    return '<div class="stair'+(big?' big':'')+'" data-tn="'+tn+'" title="'+(big?'Click to shrink':'Click to enlarge')+'">'+
+    let h='<div class="stair'+(big?' big':'')+'" data-tn="'+tn+'" title="'+(big?'Click to close the person breakdown':'Click to see yo / tú / él…')+'">'+
       '<h3>'+escHtml(TLABEL[tn]||tn)+'</h3>'+
-      '<div class="meta">'+a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%</div>'+
-      '<canvas id="stair_'+tn+'" height="'+(big?340:210)+'"></canvas></div>';
+      '<div class="meta">'+a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%'+(big?'':' · click for persons')+'</div>'+
+      '<canvas id="stair_'+tn+'" height="'+(big?260:210)+'"></canvas>';
+    if(big && tn!=='infinitive') {
+      const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
+      h+='<div class="plist">'+labels.map((lbl,p)=>{
+        const pa=a.filter(e=>String(e.p)===String(p));
+        const pc=pa.filter(e=>e.r===1).length;
+        if(!pa.length) return '<div class="pstair"><h4>'+escHtml(lbl)+'</h4><div class="meta">0 attempts</div><div class="pnone">—</div></div>';
+        return '<div class="pstair"><h4>'+escHtml(lbl)+'</h4>'+
+          '<div class="meta">'+pc+'/'+pa.length+' · '+Math.round(100*pc/pa.length)+'%</div>'+
+          '<canvas id="stair_'+tn+'_p'+p+'" height="100"></canvas></div>';
+      }).join('')+'</div>';
+    }
+    return h+'</div>';
   }).join('');
-  order.forEach(tn=>{ if(byTense[tn]) drawStair('stair_'+tn, byTense[tn], stairBig===tn?340:210); });
+  order.forEach(tn=>{
+    if(!byTense[tn]) return;
+    drawStair('stair_'+tn, byTense[tn], stairBig===tn?260:210);
+    if(stairBig===tn && tn!=='infinitive') {
+      const nP = tn.indexOf('imperative')===0 ? 5 : 6;
+      for(let p=0;p<nP;p++) {
+        const pa=byTense[tn].filter(e=>String(e.p)===String(p));
+        if(pa.length) drawStair('stair_'+tn+'_p'+p, pa, 100);
+      }
+    }
+  });
   grid.querySelectorAll('.stair[data-tn]').forEach(el=>{
     el.addEventListener('click', ()=>{
       const tn=el.getAttribute('data-tn');
