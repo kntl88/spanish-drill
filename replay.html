@@ -97,6 +97,30 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 .userpick button { font-size: 0.75rem; }
 .userpick button.cur { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .hidden { display: none; }
+.tabbar { display: flex; gap: 8px; margin-bottom: 14px; }
+.tab { font-family: var(--font-ui); font-size: 0.88rem; background: var(--surface); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 6px 18px; cursor: pointer; }
+.tab.cur { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.gsec { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.gsec h2 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; margin: 0 0 2px; }
+.gsub { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 10px; }
+.gwrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.gwrap .gsec { margin-bottom: 0; }
+#curveCanvas { width: 100%; display: block; }
+.gbar-row { display: grid; grid-template-columns: 92px 1fr 96px; align-items: center; gap: 8px; margin: 5px 0; font-size: 0.8rem; }
+.gbar-row .lbl { text-align: right; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gbar-row .num { color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gbar { height: 14px; background: var(--cell-empty); border-radius: 4px; overflow: hidden; }
+.gbar > span { display: block; height: 100%; border-radius: 4px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; }
+.dot.g { background: var(--good); }
+.dot.b { background: var(--bad); }
+.ivrow { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; }
+.ivrow:last-child { border-bottom: none; }
+.ivrow .ivname { color: var(--text-secondary); }
+.ivrow .ivval { font-variant-numeric: tabular-nums; text-align: right; }
+.ivrow .ivval b { font-size: 0.95rem; }
+.ivgood { color: var(--good); } .ivbad { color: var(--bad); }
 </style>
 
 <div class="topbar">
@@ -120,6 +144,11 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </div>
 
 <div id="tool" class="hidden">
+  <div class="tabbar">
+    <button class="tab cur" id="tabReplay">Replay</button>
+    <button class="tab" id="tabGraphs">Graphs</button>
+  </div>
+  <div id="replayView">
   <div class="controls">
     <div>
       <label for="gidSel">Verb type</label>
@@ -175,6 +204,45 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
     Top bar = this cell's share of the type's attempts (widest bar = most-drilled cell).
     Imperative rows use the command persons tú · ud · nos · vos · uds at p0–p4.
     ✓/✗ marks the cell of the answer just replayed. Keys: Space play · ← → step · Home restart.
+  </div>
+  </div>
+
+  <div id="graphsView" class="hidden">
+    <div class="controls">
+      <div>
+        <label for="gScope">Scope</label>
+        <select id="gScope"></select>
+      </div>
+      <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
+    </div>
+    <div class="gsec">
+      <h2>Learning curve</h2>
+      <div class="gsub">rolling accuracy over the last 20 answers · <span class="dot g"></span> star gained · <span class="dot b"></span> star lost · dashed lines = session breaks</div>
+      <canvas id="curveCanvas" height="190"></canvas>
+    </div>
+    <div class="gwrap">
+      <div class="gsec">
+        <h2>Trouble by tense</h2>
+        <div class="gsub">bar length = error rate · color = accuracy</div>
+        <div id="barsTense"></div>
+      </div>
+      <div class="gsec">
+        <h2>Trouble by person</h2>
+        <div class="gsub">bar length = error rate · color = accuracy</div>
+        <div id="barsPerson"></div>
+      </div>
+    </div>
+    <div class="gwrap">
+      <div class="gsec">
+        <h2>Hardest cells</h2>
+        <div class="gsub">worst first · needs ≥3 answers</div>
+        <div id="troubleCells"></div>
+      </div>
+      <div class="gsec">
+        <h2>Do the interventions work?</h2>
+        <div id="interv"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -487,6 +555,203 @@ function renderUserPick() {
 }
 document.getElementById('ghGo').addEventListener('click', ghLogin);
 document.getElementById('ghPw').addEventListener('keydown', ev=>{ if(ev.key==='Enter') ghLogin(); });
+
+/* ---------- graphs ---------- */
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function showView(which) {
+  document.getElementById('replayView').classList.toggle('hidden', which!=='replay');
+  document.getElementById('graphsView').classList.toggle('hidden', which!=='graphs');
+  document.getElementById('tabReplay').classList.toggle('cur', which==='replay');
+  document.getElementById('tabGraphs').classList.toggle('cur', which==='graphs');
+  if(which==='graphs') { populateScope(); renderGraphs(); }
+  if(which==='replay') stopGraphsOnly();
+}
+function stopGraphsOnly() {}
+function populateScope() {
+  const sel=document.getElementById('gScope');
+  const counts={};
+  allAttempts.forEach(e=>{ if(e.g) counts[e.g]=(counts[e.g]||0)+1; });
+  const prev=sel.value;
+  sel.innerHTML='';
+  const oAll=document.createElement('option'); oAll.value=''; oAll.textContent='All types · '+allAttempts.length;
+  sel.appendChild(oAll);
+  Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).forEach(g=>{
+    const o=document.createElement('option'); o.value=g; o.textContent=(GID_LABEL[g]||g)+' · '+counts[g];
+    sel.appendChild(o);
+  });
+  if(prev && (prev===''||counts[prev])) sel.value=prev;
+}
+function graphData() {
+  const scope=document.getElementById('gScope').value;
+  const withPower=document.getElementById('gPower').checked;
+  return allAttempts.filter(e=>(!scope || e.g===scope) && (withPower || e.k!=='power'));
+}
+function pct(c,n) { return n ? Math.round(100*c/n) : null; }
+function renderGraphs() {
+  const data=graphData();
+  drawCurve(data);
+  drawBars('barsTense', data, e=>TLABEL[e.tn]||e.tn);
+  drawBars('barsPerson', data, e=>{
+    if(e.tn==='infinitive'||e.p==null) return 'infinitive';
+    return (e.tn.indexOf('imperative')===0 ? (IMP_PERSONS[e.p]||'p'+e.p)+' (imp)' : PERSONS[e.p]||'p'+e.p);
+  });
+  drawTroubleCells(data);
+  drawInterventions(data);
+}
+function drawCurve(data) {
+  const cv=document.getElementById('curveCanvas');
+  const W=cv.clientWidth||800, H=190;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const padL=34, padR=8, padT=10, padB=18;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const muted=cssVar('--text-muted'), border=cssVar('--border'), accent=cssVar('--accent');
+  const good=cssVar('--good'), bad=cssVar('--bad');
+  ctx.font='10px -apple-system, sans-serif';
+  [0,25,50,75,100].forEach(v=>{
+    const y=padT+ih*(1-v/100);
+    ctx.strokeStyle=border; ctx.lineWidth=v===0?1:0.5;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    ctx.fillStyle=muted; ctx.textAlign='right'; ctx.fillText(v+'%', padL-5, y+3);
+  });
+  if(data.length<2) { ctx.fillStyle=muted; ctx.textAlign='center'; ctx.fillText('not enough answers yet', W/2, H/2); return; }
+  const WIN=20;
+  const xs=i=>padL+iw*(data.length===1?0:i/(data.length-1));
+  const roll=[];
+  let acc=[];
+  for(let i=0;i<data.length;i++){ acc.push(data[i].r===1?1:0); if(acc.length>WIN) acc.shift(); roll.push(acc.reduce((a,b)=>a+b,0)/acc.length); }
+  // session breaks (>30 min)
+  ctx.strokeStyle=muted; ctx.setLineDash([3,4]); ctx.lineWidth=1;
+  for(let i=1;i<data.length;i++) if(data[i].ts-data[i-1].ts>30*60*1000) {
+    const x=xs(i); ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+ih); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // area fill + line
+  ctx.beginPath();
+  roll.forEach((v,i)=>{ const x=xs(i), y=padT+ih*(1-v); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.strokeStyle=accent; ctx.lineWidth=1.8; ctx.stroke();
+  ctx.lineTo(xs(data.length-1),padT+ih); ctx.lineTo(xs(0),padT+ih); ctx.closePath();
+  ctx.globalAlpha=0.12; ctx.fillStyle=accent; ctx.fill(); ctx.globalAlpha=1;
+  // wrong ticks along the bottom
+  ctx.fillStyle=bad;
+  data.forEach((e,i)=>{ if(e.r!==1) ctx.fillRect(xs(i)-0.75, padT+ih-6, 1.5, 6); });
+  // star events
+  data.forEach((e,i)=>{
+    if(!e.dS) return;
+    const x=xs(i), y=padT+ih*(1-roll[i]);
+    ctx.fillStyle=e.dS>0?good:bad;
+    ctx.beginPath(); ctx.arc(x,y,3.2,0,7); ctx.fill();
+  });
+  // endpoint emphasis
+  const lx=xs(data.length-1), ly=padT+ih*(1-roll[roll.length-1]);
+  ctx.fillStyle=accent; ctx.beginPath(); ctx.arc(lx,ly,3.5,0,7); ctx.fill();
+  ctx.fillStyle=muted; ctx.textAlign='left';
+  ctx.fillText(data.length+' answers', padL, H-4);
+  ctx.textAlign='right';
+  ctx.fillText('now: '+Math.round(roll[roll.length-1]*100)+'%', W-padR, H-4);
+}
+function drawBars(elId, data, keyFn) {
+  const agg={};
+  data.forEach(e=>{ const k=keyFn(e); if(!agg[k]) agg[k]={n:0,w:0}; agg[k].n++; if(e.r!==1) agg[k].w++; });
+  const rows=Object.entries(agg).filter(([,v])=>v.n>=2)
+    .map(([k,v])=>({k, n:v.n, w:v.w, err:v.w/v.n}))
+    .sort((a,b)=>b.err-a.err || b.n-a.n);
+  const el=document.getElementById(elId);
+  if(!rows.length) { el.innerHTML='<div class="gsub">no data in scope</div>'; return; }
+  el.innerHTML=rows.map(r=>
+    '<div class="gbar-row"><span class="lbl">'+escHtml(r.k)+'</span>'+
+    '<div class="gbar"><span style="width:'+Math.max(2,Math.round(100*r.err))+'%; background:'+heatColor(1-r.err, r.n)+'"></span></div>'+
+    '<span class="num">'+r.w+'✗ / '+r.n+' · '+Math.round(100*r.err)+'%</span></div>'
+  ).join('');
+}
+function drawTroubleCells(data) {
+  const agg={};
+  data.forEach(e=>{
+    const p=(e.tn==='infinitive'||e.p==null)?'':('|'+(e.tn.indexOf('imperative')===0?(IMP_PERSONS[e.p]||e.p):(PERSONS[e.p]||e.p)));
+    const k=e.v+' · '+(TLABEL[e.tn]||e.tn)+p;
+    if(!agg[k]) agg[k]={n:0,w:0};
+    agg[k].n++; if(e.r!==1) agg[k].w++;
+  });
+  const rows=Object.entries(agg).filter(([,v])=>v.n>=3 && v.w>0)
+    .map(([k,v])=>({k, n:v.n, w:v.w, err:v.w/v.n}))
+    .sort((a,b)=>b.err-a.err || b.w-a.w).slice(0,10);
+  const el=document.getElementById('troubleCells');
+  if(!rows.length) { el.innerHTML='<div class="gsub">nothing stands out — no cell with 3+ answers has a miss</div>'; return; }
+  el.innerHTML=rows.map(r=>
+    '<div class="gbar-row"><span class="lbl" title="'+escHtml(r.k)+'">'+escHtml(r.k)+'</span>'+
+    '<div class="gbar"><span style="width:'+Math.max(2,Math.round(100*r.err))+'%; background:'+heatColor(1-r.err, r.n)+'"></span></div>'+
+    '<span class="num">'+r.w+'✗ / '+r.n+'</span></div>'
+  ).join('');
+}
+function drawInterventions(data) {
+  const rows=[];
+  // 1. Miss recovery: after a miss, is the next serve of the same cell correct?
+  let missN=0, missRec=0; const gaps=[];
+  for(let i=0;i<data.length;i++) {
+    const e=data[i];
+    if(e.r===1 || e.k==='power') continue;
+    for(let j=i+1;j<data.length;j++) {
+      const f=data[j];
+      if(f.g===e.g && f.tn===e.tn && String(f.p)===String(e.p) && f.k!=='power') {
+        missN++; if(f.r===1) missRec++; gaps.push(j-i);
+        break;
+      }
+    }
+  }
+  gaps.sort((a,b)=>a-b);
+  const medGap=gaps.length?gaps[Math.floor(gaps.length/2)]:null;
+  rows.push({name:'Miss recovery — same cell correct on its next appearance',
+    val: missN? '<b class="'+(missRec/missN>=0.7?'ivgood':'ivbad')+'">'+pct(missRec,missN)+'%</b> ('+missRec+'/'+missN+(medGap?' · median gap '+medGap+' answers':'')+')' : 'no misses yet'});
+  // 2. Redemptions
+  const red=data.filter(e=>e.k && e.k.indexOf('redeem')!==-1);
+  const redW=red.filter(e=>e.r===1).length;
+  rows.push({name:'Redemption cards — star saved',
+    val: red.length? '<b class="'+(redW/red.length>=0.5?'ivgood':'ivbad')+'">'+pct(redW,red.length)+'%</b> ('+redW+' saved / '+(red.length-redW)+' lost)' : 'none yet'});
+  // 3. Power practice: accuracy inside, and on the next normal serve of that cell
+  const pw=allAttempts.filter(e=>e.k==='power' && (!document.getElementById('gScope').value || e.g===document.getElementById('gScope').value));
+  if(pw.length) {
+    const pwC=pw.filter(e=>e.r===1).length;
+    let postN=0, postC=0;
+    pw.forEach((e,idx)=>{
+      const gi=allAttempts.indexOf(e);
+      for(let j=gi+1;j<allAttempts.length;j++) {
+        const f=allAttempts[j];
+        if(f.k!=='power' && f.g===e.g && f.tn===e.tn && String(f.p)===String(e.p)) { postN++; if(f.r===1) postC++; break; }
+      }
+    });
+    rows.push({name:'Power practice — accuracy during ⚡ runs',
+      val:'<b>'+pct(pwC,pw.length)+'%</b> ('+pwC+'/'+pw.length+')'});
+    rows.push({name:'Power practice — next normal serve of that cell',
+      val: postN? '<b class="'+(postC/postN>=0.7?'ivgood':'ivbad')+'">'+pct(postC,postN)+'%</b> ('+postC+'/'+postN+')' : 'not seen again yet'});
+  } else rows.push({name:'Power practice', val:'not used in scope'});
+  // 4. New-verb squares
+  const sq=data.filter(e=>e.sq!=null);
+  if(sq.length) {
+    const sqC=sq.filter(e=>e.r===1).length;
+    rows.push({name:'New-verb integration (□ square serves)',
+      val:'<b class="'+(sqC/sq.length>=0.7?'ivgood':'ivbad')+'">'+pct(sqC,sq.length)+'%</b> ('+sqC+'/'+sq.length+')'});
+  }
+  // 5. Typed vs reveal
+  const ty=data.filter(e=>e.typed), tv=data.filter(e=>!e.typed);
+  if(ty.length>=3 && tv.length>=3) {
+    rows.push({name:'Typed answers vs tap-reveal',
+      val:'<b>'+pct(ty.filter(e=>e.r===1).length,ty.length)+'%</b> typed ('+ty.length+') · <b>'+pct(tv.filter(e=>e.r===1).length,tv.length)+'%</b> reveal ('+tv.length+')'});
+  }
+  // 6. Star economy in scope
+  const gains=data.filter(e=>e.dS>0).length, losses=data.filter(e=>e.dS<0).length;
+  rows.push({name:'Star economy in scope', val:'<b class="ivgood">+'+gains+'</b> gained · <b class="ivbad">−'+losses+'</b> lost'});
+  document.getElementById('interv').innerHTML=rows.map(r=>
+    '<div class="ivrow"><span class="ivname">'+r.name+'</span><span class="ivval">'+r.val+'</span></div>'
+  ).join('');
+}
+document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
+document.getElementById('tabGraphs').addEventListener('click', ()=>showView('graphs'));
+document.getElementById('gScope').addEventListener('change', renderGraphs);
+document.getElementById('gPower').addEventListener('change', renderGraphs);
+if(window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(!document.getElementById('graphsView').classList.contains('hidden')) renderGraphs(); });
+window.addEventListener('resize', ()=>{ if(!document.getElementById('graphsView').classList.contains('hidden')) drawCurve(graphData()); });
 
 tryAutoLoad();
 </script>
