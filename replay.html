@@ -214,9 +214,16 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
           <option value="time">Calendar</option>
         </select>
       </div>
+      <div>
+        <label for="gY">Y-axis</label>
+        <select id="gY">
+          <option value="goal" selected>vs 90% goal</option>
+          <option value="climb">Total climb</option>
+        </select>
+      </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers (axis tops at the total ✓) · flat = a wrong (red tick) · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · <b>vs-90%-goal view: the green horizontal line IS the goal</b> — each correct climbs +0.1, each wrong drops −0.9, so flat = exactly 90%, rising = ahead, sagging = behind (green/red shading shows which) · total-climb view: y counts corrects, red tick = a wrong · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
     <div class="plegend" id="kindLegend" style="margin:-2px 0 10px"></div>
     <div class="stairs" id="stairGrid"></div>
   </div>
@@ -676,17 +683,63 @@ const KIND_COLORS={ 'power':'#8E5A9E', 'redeem':'#B8762C', 'square':'#2E6E8E', '
   'ivl-mixed':'#6FAE8B', 'intro':'#C9A44A', 'round':'#5B8DB0', 'maint':null, 'ladder':null };
 const KIND_LABELS=[['#3A7A56','interval · new forms'],['#6FAE8B','interval · mixed'],['#5B8DB0','checkpoint/test/gauntlet round'],
   ['#8E5A9E','power practice'],['#B8762C','redemption'],['#2E6E8E','new-verb square'],['#C9A44A','intro']];
-function chartFrame(ctx, W, H, padL, padR, padT, padB, maxY, timeMode, layout, xLabel) {
+function gYMode() { const el=document.getElementById('gY'); return (el && el.value) || 'goal'; }
+function seriesValues(attempts, mode) {
+  // value after each attempt; goal mode: surplus vs the 90% pace (+0.1 correct, −0.9 wrong)
+  const vs=[]; let v=0;
+  attempts.forEach(e=>{ v += (e.r===1) ? (mode==='goal' ? 0.1 : 1) : (mode==='goal' ? -0.9 : 0); vs.push(v); });
+  return vs;
+}
+function drawDeco(ctx, attempts, timeMode, tx, X, padT, ih, accent) {
+  // interval bars + context strip (shared by both chart kinds)
+  attempts.forEach((e,i)=>{
+    const x = timeMode ? tx(e.ts) : X(i+1);
+    const ivv = e.iv!=null ? e.iv : e.__gap;
+    if(ivv!=null && ivv>0) {
+      ctx.fillStyle=accent; ctx.globalAlpha=0.18;
+      const h = Math.min(26, Math.log2(ivv+1)*5.5);
+      ctx.fillRect(x-1, padT+ih-h, 2, h);
+      ctx.globalAlpha=1;
+    }
+    const kc=KIND_COLORS[classifyKind(e)];
+    if(kc) { ctx.fillStyle=kc; ctx.fillRect(x-1.5, padT+ih+2, 3, 4); }
+  });
+}
+function drawStair(cvId, attempts, height) {
+  const cv=document.getElementById(cvId);
+  if(!cv) return;
+  const W=cv.clientWidth||340, H=height||210;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const padL=34, padR=6, padT=8, padB=16;
   const iw=W-padL-padR, ih=H-padT-padB;
   const border=cssVar('--border'), muted=cssVar('--text-muted');
+  const accent=cssVar('--accent'), bad=cssVar('--bad'), good=cssVar('--good');
+  const N=attempts.length;
+  const mode=gYMode();
+  const vs=seriesValues(attempts, mode);
+  const timeMode = gAxisMode==='time';
+  const layout = timeMode ? segLayout(padL, iw) : null;
+  const tx = timeMode ? txFor(layout) : null;
+  const X=i=>padL+iw*(i/Math.max(1,N));
+  let lo, hi;
+  if(mode==='goal') { lo=Math.min(0, ...vs); hi=Math.max(0, ...vs); const pad=Math.max(1,(hi-lo)*0.1); lo-=pad; hi+=pad; }
+  else { lo=0; hi=Math.max(1, vs[vs.length-1]||1); }
+  const Y=v=>padT+ih*(1-(v-lo)/(hi-lo));
   ctx.font='9px -apple-system, sans-serif';
   ctx.strokeStyle=border; ctx.lineWidth=1;
   ctx.strokeRect(padL,padT,iw,ih);
   ctx.fillStyle=muted; ctx.textAlign='right';
-  ctx.fillText(String(maxY)+' ✓', padL-3, padT+7);
-  ctx.fillText('0', padL-3, padT+ih+3);
+  if(mode==='goal') {
+    ctx.fillText((hi>0?'+':'')+hi.toFixed(0), padL-3, padT+7);
+    ctx.fillText((lo>0?'+':'')+lo.toFixed(0), padL-3, padT+ih+3);
+  } else {
+    ctx.fillText(hi.toFixed(0)+' ✓', padL-3, padT+7);
+    ctx.fillText('0', padL-3, padT+ih+3);
+  }
   if(timeMode && layout) {
-    // day label under each session, dashed divider in each gap
     layout.forEach((L,i)=>{
       ctx.fillStyle=muted; ctx.textAlign='left';
       ctx.fillText(fmtDay(L.t0), L.x0, H-3);
@@ -699,72 +752,61 @@ function chartFrame(ctx, W, H, padL, padR, padT, padB, maxY, timeMode, layout, x
     });
   } else {
     ctx.fillStyle=muted; ctx.textAlign='center';
-    ctx.fillText(xLabel, padL+iw/2, H-3);
+    ctx.fillText(N+' attempts', padL+iw/2, H-3);
   }
-  return {iw:iw, ih:ih};
-}
-function drawStair(cvId, attempts, height) {
-  const cv=document.getElementById(cvId);
-  if(!cv) return;
-  const W=cv.clientWidth||340, H=height||210;
-  const dpr=window.devicePixelRatio||1;
-  cv.width=W*dpr; cv.height=H*dpr;
-  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
-  ctx.clearRect(0,0,W,H);
-  const padL=30, padR=6, padT=6, padB=16;
-  const accent=cssVar('--accent'), bad=cssVar('--bad'), muted=cssVar('--text-muted');
-  const N=attempts.length;
-  const corrects=attempts.filter(e=>e.r===1).length;
-  const maxY=Math.max(1,corrects);
-  const timeMode = gAxisMode==='time';
-  const layout = timeMode ? segLayout(padL, W-padL-padR) : null;
-  const tx = timeMode ? txFor(layout) : null;
-  const dims=chartFrame(ctx, W, H, padL, padR, padT, padB, maxY, timeMode, layout, N+' attempts');
-  const iw=dims.iw, ih=dims.ih;
-  const X=i=>padL+iw*(i/Math.max(1,N));
-  const Y=v=>padT+ih*(1-v/maxY);
-  if(!timeMode) {
-    // perfect run: one step up per attempt, clipped at the top
-    const reach=Math.min(N,maxY);
+  if(mode==='goal') {
+    // the 90% pace is the horizon: shade ahead/behind, draw the zero line
+    let pv=0;
+    attempts.forEach((e,i)=>{
+      const x0=timeMode ? (i? tx(attempts[i-1].ts):tx(attempts[0].ts)) : X(i);
+      const x1=timeMode ? tx(e.ts) : X(i+1);
+      const v=vs[i];
+      ctx.fillStyle = v>=0 ? good : bad;
+      ctx.globalAlpha=0.07;
+      const yz=Y(0), yv=Y(v);
+      ctx.fillRect(Math.min(x0,x1), Math.min(yz,yv), Math.max(1,Math.abs(x1-x0)), Math.abs(yv-yz));
+      ctx.globalAlpha=1;
+      pv=v;
+    });
+    ctx.strokeStyle=good; ctx.globalAlpha=0.8; ctx.setLineDash([6,4]); ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(padL, Y(0)); ctx.lineTo(padL+iw, Y(0)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.fillStyle=good; ctx.textAlign='left';
+    ctx.fillText('90% pace', padL+4, Y(0)-3);
+  } else {
+    const corrects=vs[vs.length-1]||0;
+    const reach=Math.min(N, corrects||1);
     ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
     ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach),Y(reach)); ctx.stroke();
-    // the program goal: a 0.9-slope trajectory
-    const reach9=Math.min(N, maxY/0.9);
-    ctx.strokeStyle=cssVar('--good'); ctx.globalAlpha=0.55; ctx.setLineDash([5,4]);
+    const reach9=Math.min(N, (corrects||1)/0.9);
+    ctx.strokeStyle=good; ctx.globalAlpha=0.55; ctx.setLineDash([5,4]);
     ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach9),Y(reach9*0.9)); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha=1;
   }
-  // interval bars (earned iv when logged, else observed gap) + practice-context strip
-  attempts.forEach((e,i)=>{
-    const x = timeMode ? tx(e.ts) : X(i+1);
-    const ivv = e.iv!=null ? e.iv : e.__gap;
-    if(ivv!=null && ivv>0) {
-      ctx.fillStyle=accent; ctx.globalAlpha=0.22;
-      const h = Math.min(30, Math.log2(ivv+1)*6.5);
-      ctx.fillRect(x-1, padT+ih-h, 2, h);
-      ctx.globalAlpha=1;
-    }
-    const kc=KIND_COLORS[classifyKind(e)];
-    if(kc) { ctx.fillStyle=kc; ctx.fillRect(x-1.5, padT+ih+2, 3, 4); }
-  });
-  let y=0;
+  drawDeco(ctx, attempts, timeMode, tx, X, padT, ih, accent);
   ctx.strokeStyle=accent; ctx.lineWidth=1.8;
   ctx.beginPath();
   ctx.moveTo(timeMode ? tx(attempts[0].ts) : X(0), Y(0));
   const wrongXs=[];
+  let prev=0;
   attempts.forEach((e,i)=>{
     const x = timeMode ? tx(e.ts) : X(i+1);
-    ctx.lineTo(x, Y(y));
-    if(e.r===1) { y++; ctx.lineTo(x, Y(y)); }
-    else wrongXs.push(x);
+    ctx.lineTo(x, Y(prev));
+    ctx.lineTo(x, Y(vs[i]));
+    if(e.r!==1) wrongXs.push(x);
+    prev=vs[i];
   });
   ctx.stroke();
   ctx.strokeStyle=bad; ctx.lineWidth=1.6;
-  wrongXs.forEach(x=>{
-    ctx.beginPath(); ctx.moveTo(x, padT+ih-1); ctx.lineTo(x, padT+ih-6); ctx.stroke();
-  });
+  wrongXs.forEach(x=>{ ctx.beginPath(); ctx.moveTo(x, padT+ih-1); ctx.lineTo(x, padT+ih-6); ctx.stroke(); });
+  const lastX = timeMode ? tx(attempts[N-1].ts) : X(N);
   ctx.fillStyle=accent;
-  ctx.beginPath(); ctx.arc(timeMode ? tx(attempts[N-1].ts) : X(N), Y(y), 3, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(lastX, Y(prev), 3, 0, 7); ctx.fill();
+  if(mode==='goal') {
+    ctx.fillStyle = prev>=0 ? good : bad;
+    ctx.textAlign='right';
+    ctx.fillText('now '+(prev>=0?'+':'')+prev.toFixed(1)+' vs 90% pace', padL+iw-4, padT+10);
+  }
 }
 function drawStairMulti(cvId, series, height) {
   const cv=document.getElementById(cvId);
@@ -774,46 +816,76 @@ function drawStairMulti(cvId, series, height) {
   cv.width=W*dpr; cv.height=H*dpr;
   const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
   ctx.clearRect(0,0,W,H);
-  const padL=30, padR=8, padT=6, padB=16;
-  const muted=cssVar('--text-muted');
-  const maxN=Math.max(1, ...series.map(s=>s.attempts.length));
-  const maxY=Math.max(1, ...series.map(s=>s.attempts.filter(e=>e.r===1).length));
+  const padL=34, padR=8, padT=8, padB=16;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const border=cssVar('--border'), muted=cssVar('--text-muted'), good=cssVar('--good');
+  const mode=gYMode();
   const timeMode = gAxisMode==='time';
-  const layout = timeMode ? segLayout(padL, W-padL-padR) : null;
+  const layout = timeMode ? segLayout(padL, iw) : null;
   const tx = timeMode ? txFor(layout) : null;
-  const dims=chartFrame(ctx, W, H, padL, padR, padT, padB, maxY, timeMode, layout, 'attempts per person (longest: '+maxN+')');
-  const iw=dims.iw, ih=dims.ih;
+  const maxN=Math.max(1, ...series.map(s=>s.attempts.length));
   const X=i=>padL+iw*(i/maxN);
-  const Y=v=>padT+ih*(1-v/maxY);
-  if(!timeMode) {
-    const reach=Math.min(maxN,maxY);
-    ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach),Y(reach)); ctx.stroke();
-    const reach9=Math.min(maxN, maxY/0.9);
-    ctx.strokeStyle=cssVar('--good'); ctx.globalAlpha=0.55; ctx.setLineDash([5,4]);
-    ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach9),Y(reach9*0.9)); ctx.stroke();
+  const allVs=series.map(s=>seriesValues(s.attempts, mode));
+  let lo, hi;
+  if(mode==='goal') {
+    lo=Math.min(0, ...allVs.map(v=>Math.min(...v)));
+    hi=Math.max(0, ...allVs.map(v=>Math.max(...v)));
+    const pad=Math.max(1,(hi-lo)*0.1); lo-=pad; hi+=pad;
+  } else {
+    lo=0; hi=Math.max(1, ...allVs.map(v=>v[v.length-1]||0));
+  }
+  const Y=v=>padT+ih*(1-(v-lo)/(hi-lo));
+  ctx.font='9px -apple-system, sans-serif';
+  ctx.strokeStyle=border; ctx.lineWidth=1;
+  ctx.strokeRect(padL,padT,iw,ih);
+  ctx.fillStyle=muted; ctx.textAlign='right';
+  ctx.fillText((mode==='goal'&&hi>0?'+':'')+hi.toFixed(0), padL-3, padT+7);
+  ctx.fillText((mode==='goal'&&lo>0?'+':'')+lo.toFixed(0), padL-3, padT+ih+3);
+  if(timeMode && layout) {
+    layout.forEach((L,i)=>{
+      ctx.fillStyle=muted; ctx.textAlign='left';
+      ctx.fillText(fmtDay(L.t0), L.x0, H-3);
+      if(i>0) {
+        const gx=L.x0-SEG_GAP_PX/2;
+        ctx.strokeStyle=muted; ctx.globalAlpha=0.5; ctx.setLineDash([3,4]);
+        ctx.beginPath(); ctx.moveTo(gx,padT); ctx.lineTo(gx,padT+ih); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha=1;
+      }
+    });
+  } else {
+    ctx.fillStyle=muted; ctx.textAlign='center';
+    ctx.fillText('attempts per person (longest: '+maxN+')', padL+iw/2, H-3);
+  }
+  if(mode==='goal') {
+    ctx.strokeStyle=good; ctx.globalAlpha=0.8; ctx.setLineDash([6,4]); ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(padL, Y(0)); ctx.lineTo(padL+iw, Y(0)); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.fillStyle=good; ctx.textAlign='left';
+    ctx.fillText('90% pace', padL+4, Y(0)-3);
   }
   series.forEach((s,si)=>{
     const off=(si-(series.length-1)/2)*2.5;
-    let y=0;
+    const vsS=allVs[si];
     ctx.strokeStyle=s.color; ctx.lineWidth=1.7;
     ctx.beginPath();
     ctx.moveTo((timeMode ? tx(s.attempts[0].ts) : X(0))+off, Y(0));
+    let prev=0;
     s.attempts.forEach((e,i)=>{
       const x=(timeMode ? tx(e.ts) : X(i+1))+off;
-      ctx.lineTo(x, Y(y));
-      if(e.r===1) { y++; ctx.lineTo(x, Y(y)); }
+      ctx.lineTo(x, Y(prev));
+      ctx.lineTo(x, Y(vsS[i]));
+      prev=vsS[i];
     });
     ctx.stroke();
     ctx.fillStyle=s.color;
-    ctx.beginPath(); ctx.arc((timeMode ? tx(s.attempts[s.attempts.length-1].ts) : X(s.attempts.length))+off, Y(y), 2.8, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc((timeMode ? tx(s.attempts[s.attempts.length-1].ts) : X(s.attempts.length))+off, Y(prev), 2.8, 0, 7); ctx.fill();
   });
 }
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
 document.getElementById('tabGraphs').addEventListener('click', ()=>showView('graphs'));
 document.getElementById('gScope').addEventListener('change', renderGraphs);
 document.getElementById('gAxis').addEventListener('change', renderGraphs);
+document.getElementById('gY').addEventListener('change', renderGraphs);
 document.getElementById('gPower').addEventListener('change', renderGraphs);
 if(window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if(!document.getElementById('graphsView').classList.contains('hidden')) renderGraphs(); });
 window.addEventListener('resize', ()=>{ if(!document.getElementById('graphsView').classList.contains('hidden')) renderGraphs(); });
