@@ -775,6 +775,21 @@ function drawStair(cvId, attempts, height) {
     ctx.fillText('90% pace', padL+4, Y(0)-3);
   } else {
     const corrects=vs[vs.length-1]||0;
+    if(!timeMode) {
+      // angled guide grid: parallel 90%-slope lines, like graph paper tilted to the goal
+      ctx.save();
+      ctx.beginPath(); ctx.rect(padL, padT, iw, ih); ctx.clip();
+      ctx.strokeStyle=good; ctx.globalAlpha=0.13; ctx.setLineDash([2,4]); ctx.lineWidth=1;
+      const dA=Math.max(2, N/6);
+      for(let a=-Math.ceil((hi/0.9)/dA)*dA; a<N; a+=dA) {
+        ctx.beginPath();
+        ctx.moveTo(X(a), Y(0));
+        ctx.lineTo(X(N), Y(0.9*(N-a)));
+        ctx.stroke();
+      }
+      ctx.restore();
+      ctx.setLineDash([]); ctx.globalAlpha=1;
+    }
     const reach=Math.min(N, corrects||1);
     ctx.strokeStyle=muted; ctx.globalAlpha=0.4; ctx.setLineDash([3,3]);
     ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach),Y(reach)); ctx.stroke();
@@ -862,6 +877,19 @@ function drawStairMulti(cvId, series, height) {
     ctx.setLineDash([]); ctx.globalAlpha=1;
     ctx.fillStyle=good; ctx.textAlign='left';
     ctx.fillText('90% pace', padL+4, Y(0)-3);
+  } else if(!timeMode) {
+    ctx.save();
+    ctx.beginPath(); ctx.rect(padL, padT, iw, ih); ctx.clip();
+    ctx.strokeStyle=good; ctx.globalAlpha=0.13; ctx.setLineDash([2,4]); ctx.lineWidth=1;
+    const dA=Math.max(2, maxN/6);
+    for(let a=-Math.ceil((hi/0.9)/dA)*dA; a<maxN; a+=dA) {
+      ctx.beginPath();
+      ctx.moveTo(X(a), Y(0));
+      ctx.lineTo(X(maxN), Y(0.9*(maxN-a)));
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
   }
   series.forEach((s,si)=>{
     const off=(si-(series.length-1)/2)*2.5;
