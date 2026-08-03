@@ -216,7 +216,8 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers (axis tops at the total ✓) · flat = a wrong (red tick) · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break, day labels per session · <b>click a tense to overlay its yo / tú / él… lines</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers (axis tops at the total ✓) · flat = a wrong (red tick) · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
+    <div class="plegend" id="kindLegend" style="margin:-2px 0 10px"></div>
     <div class="stairs" id="stairGrid"></div>
   </div>
 </div>
@@ -603,7 +604,14 @@ function fmtDay(ts) {
 }
 function renderGraphs() {
   const data=graphData();
+  const lastAt={};
+  data.forEach((e,i)=>{
+    const key=e.g+'|'+e.tn+'|'+(e.p==null?0:e.p);
+    e.__gap=(key in lastAt)?(i-lastAt[key]-1):null;
+    lastAt[key]=i;
+  });
   gAxisMode=document.getElementById('gAxis').value||'attempt';
+  document.getElementById('kindLegend').innerHTML=KIND_LABELS.map(([c,l])=>'<span class="pl"><span class="sw" style="background:'+c+'"></span>'+l+'</span>').join('');
   buildSessions(data);
   const grid=document.getElementById('stairGrid');
   const byTense={};
@@ -654,6 +662,20 @@ function renderGraphs() {
   });
 }
 const PERSON_COLORS=['#C9A44A','#3A7A56','#C0392B','#2E6E8E','#8E5A9E','#B8762C'];
+function classifyKind(e) {
+  if(e.k==='power') return 'power';
+  if(e.k && e.k.indexOf('redeem')!==-1) return 'redeem';
+  if(e.sq!=null) return 'square';
+  if(e.k==='ivl') return e.ph==='pure' ? 'ivl-pure' : 'ivl-mixed';
+  if(e.k==='intro') return 'intro';
+  if(e.k && e.k.indexOf('round')!==-1) return 'round';
+  if(e.k && e.k.indexOf('maint')===0) return 'maint';
+  return 'ladder';
+}
+const KIND_COLORS={ 'power':'#8E5A9E', 'redeem':'#B8762C', 'square':'#2E6E8E', 'ivl-pure':'#3A7A56',
+  'ivl-mixed':'#6FAE8B', 'intro':'#C9A44A', 'round':'#5B8DB0', 'maint':null, 'ladder':null };
+const KIND_LABELS=[['#3A7A56','interval · new forms'],['#6FAE8B','interval · mixed'],['#5B8DB0','checkpoint/test/gauntlet round'],
+  ['#8E5A9E','power practice'],['#B8762C','redemption'],['#2E6E8E','new-verb square'],['#C9A44A','intro']];
 function chartFrame(ctx, W, H, padL, padR, padT, padB, maxY, timeMode, layout, xLabel) {
   const iw=W-padL-padR, ih=H-padT-padB;
   const border=cssVar('--border'), muted=cssVar('--text-muted');
@@ -712,6 +734,19 @@ function drawStair(cvId, attempts, height) {
     ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach9),Y(reach9*0.9)); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha=1;
   }
+  // interval bars (earned iv when logged, else observed gap) + practice-context strip
+  attempts.forEach((e,i)=>{
+    const x = timeMode ? tx(e.ts) : X(i+1);
+    const ivv = e.iv!=null ? e.iv : e.__gap;
+    if(ivv!=null && ivv>0) {
+      ctx.fillStyle=accent; ctx.globalAlpha=0.22;
+      const h = Math.min(30, Math.log2(ivv+1)*6.5);
+      ctx.fillRect(x-1, padT+ih-h, 2, h);
+      ctx.globalAlpha=1;
+    }
+    const kc=KIND_COLORS[classifyKind(e)];
+    if(kc) { ctx.fillStyle=kc; ctx.fillRect(x-1.5, padT+ih+2, 3, 4); }
+  });
   let y=0;
   ctx.strokeStyle=accent; ctx.lineWidth=1.8;
   ctx.beginPath();
