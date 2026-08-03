@@ -877,6 +877,19 @@ function drawStairMulti(cvId, series, height) {
       prev=vsS[i];
     });
     ctx.stroke();
+    // per-person interval bars + context strip at the same offsets
+    s.attempts.forEach((e,i)=>{
+      const x=(timeMode ? tx(e.ts) : X(i+1))+off;
+      const ivv = e.iv!=null ? e.iv : e.__gap;
+      if(ivv!=null && ivv>0) {
+        ctx.fillStyle=s.color; ctx.globalAlpha=0.16;
+        const h=Math.min(22, Math.log2(ivv+1)*4.5);
+        ctx.fillRect(x-0.8, padT+ih-h, 1.6, h);
+        ctx.globalAlpha=1;
+      }
+      const kc=KIND_COLORS[classifyKind(e)];
+      if(kc) { ctx.fillStyle=kc; ctx.fillRect(x-1, padT+ih+2, 2, 4); }
+    });
     ctx.fillStyle=s.color;
     ctx.beginPath(); ctx.arc((timeMode ? tx(s.attempts[s.attempts.length-1].ts) : X(s.attempts.length))+off, Y(prev), 2.8, 0, 7); ctx.fill();
   });
