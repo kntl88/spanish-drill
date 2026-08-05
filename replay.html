@@ -131,7 +131,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp17</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp18</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -217,13 +217,6 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
   <div id="graphsView" class="hidden">
     <div class="controls">
       <div>
-        <label for="gMode">Plot</label>
-        <select id="gMode">
-          <option value="tense" selected>By tense / mood</option>
-          <option value="verb">By verb (transfer)</option>
-        </select>
-      </div>
-      <div>
         <label for="gScope">Verb type</label>
         <select id="gScope"></select>
       </div>
@@ -243,22 +236,18 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
+    <div class="vpick" id="vPick"></div>
+    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to trace them <b>inside</b> each tense — the panels then plot just those verbs, so you see how a newcomer behaves in that tense against the 90% line.
+      <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
+      <button class="ctl" id="vClear">clear</button>
+    </div>
     <div id="stairWrap">
     <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · <b>vs-90%-goal view: the green horizontal line IS the goal</b> — each correct climbs +0.1, each wrong drops −0.9, so flat = exactly 90%, rising = ahead, sagging = behind (green/red shading shows which) · total-climb view: y counts corrects, red tick = a wrong · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
     <div class="plegend" id="kindLegend" style="margin:-2px 0 10px"></div>
     <div class="stairs" id="stairGrid"></div>
+    <div class="vtable" id="vTable"></div>
     </div>
 
-    <div id="verbWrap" class="hidden">
-      <div class="gsub" style="margin:-4px 0 10px">Each verb's line starts where it first entered your practice (x = attempt number across the whole history), so a newcomer begins mid-chart and you can watch how fast it catches the veterans. <b>vs 90% goal</b>: flat = holding target, sagging = this verb costs more than it should. Verb type filters the list; the axis always spans everything.
-        <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
-        <button class="ctl" id="vClear">clear</button>
-      </div>
-      <div class="vpick" id="vPick"></div>
-      <canvas id="verbCanvas" height="360"></canvas>
-      <div class="plegend" id="vLegend"></div>
-      <div class="vtable" id="vTable"></div>
-    </div>
   </div>
 </div>
 
@@ -619,7 +608,6 @@ function populateVerbs() {
   const {map}=verbIndex();
   const scope=(document.getElementById('gScope')||{}).value||'';
   const list=Object.values(map).filter(v=>!scope || v.g===scope).sort((a,b)=>a.first-b.first);
-  if(verbsAuto && !selVerbs.length) { selVerbs=list.slice(-4).map(v=>v.verb); verbsAuto=false; }   // newest arrivals by default
   document.getElementById('vPick').innerHTML=list.map(v=>{
     const on=selVerbs.indexOf(v.verb)!==-1;
     const c=on ? VERB_COLORS[selVerbs.indexOf(v.verb)%VERB_COLORS.length] : '';
@@ -629,20 +617,14 @@ function populateVerbs() {
     b.addEventListener('click', ()=>{
       const v=b.getAttribute('data-v');
       const i=selVerbs.indexOf(v);
-      if(i===-1) { if(selVerbs.length<8) selVerbs.push(v); } else selVerbs.splice(i,1);
-      populateVerbs(); renderVerbs();
+      if(i===-1) { if(selVerbs.length<6) selVerbs.push(v); } else selVerbs.splice(i,1);
+      renderGraphs();
     });
   });
 }
-function renderVerbs() {
-  const {data, map}=verbIndex();
-  const mode=gYMode();
+function renderVerbTable() {
+  const {map}=verbIndex();
   const series=selVerbs.map((v,si)=>({verb:v, color:VERB_COLORS[si%VERB_COLORS.length], rec:map[v]})).filter(s=>s.rec);
-  drawVerbChart(data.length, series, mode);
-  document.getElementById('vLegend').innerHTML=series.map(s=>{
-    const c=s.rec.items.filter(x=>x.r===1).length;
-    return '<span class="pl"><span class="sw" style="background:'+s.color+'"></span>'+escHtml(s.verb)+' '+c+'/'+s.rec.items.length+'</span>';
-  }).join('');
   // transfer / challenge table
   const rows=series.map(s=>{
     const it=s.rec.items;
@@ -664,54 +646,6 @@ function renderVerbs() {
     }).join('')+'</table>'+
     '<div class="gsub" style="margin-top:8px">“transfer” compares the verb’s first ten answers against how its own verb type performed over the same stretch — near zero or positive means the pattern carried over; a deep negative means this verb itself is the difficulty, not the tense.</div>'
     : '<div class="gsub">pick a verb above</div>';
-}
-function drawVerbChart(total, series, mode) {
-  const cv=document.getElementById('verbCanvas');
-  if(!cv) return;
-  const W=cv.clientWidth||700, H=360;
-  const dpr=window.devicePixelRatio||1;
-  cv.width=W*dpr; cv.height=H*dpr;
-  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
-  ctx.clearRect(0,0,W,H);
-  const padL=40, padR=10, padT=12, padB=20;
-  const iw=W-padL-padR, ih=H-padT-padB;
-  const border=cssVar('--border'), muted=cssVar('--text-muted'), good=cssVar('--good');
-  const vals=series.map(s=>{ let v=0; return s.rec.items.map(x=>{ v += (x.r===1)?(mode==='goal'?0.1:1):(mode==='goal'?-0.9:0); return {i:x.i, v:v}; }); });
-  let lo=0, hi=1;
-  vals.forEach(a=>a.forEach(p=>{ if(p.v<lo) lo=p.v; if(p.v>hi) hi=p.v; }));
-  const pad=Math.max(1,(hi-lo)*0.1); lo-=pad; hi+=pad;
-  const X=i=>padL+iw*(i/Math.max(1,total));
-  const Y=v=>padT+ih*(1-(v-lo)/(hi-lo));
-  ctx.font='10px -apple-system, sans-serif';
-  ctx.strokeStyle=border; ctx.lineWidth=1; ctx.strokeRect(padL,padT,iw,ih);
-  ctx.fillStyle=muted; ctx.textAlign='right';
-  ctx.fillText((mode==='goal'&&hi>0?'+':'')+hi.toFixed(0), padL-4, padT+8);
-  ctx.fillText((mode==='goal'&&lo>0?'+':'')+lo.toFixed(0), padL-4, padT+ih+4);
-  ctx.textAlign='center'; ctx.fillText('attempt 1', padL+20, H-5);
-  ctx.fillText('attempt '+total, padL+iw-26, H-5);
-  if(mode==='goal') {
-    ctx.strokeStyle=good; ctx.globalAlpha=0.8; ctx.setLineDash([6,4]); ctx.lineWidth=1.4;
-    ctx.beginPath(); ctx.moveTo(padL, Y(0)); ctx.lineTo(padL+iw, Y(0)); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha=1;
-    ctx.fillStyle=good; ctx.textAlign='left'; ctx.fillText('90% pace', padL+4, Y(0)-4);
-  }
-  series.forEach((s,si)=>{
-    const a=vals[si];
-    if(!a.length) return;
-    ctx.strokeStyle=s.color; ctx.lineWidth=1.8;
-    ctx.beginPath();
-    ctx.moveTo(X(s.rec.first), Y(0));
-    let prev=0;
-    a.forEach(p=>{ ctx.lineTo(X(p.i), Y(prev)); ctx.lineTo(X(p.i), Y(p.v)); prev=p.v; });
-    ctx.stroke();
-    // entry marker: where this verb joined the rotation
-    ctx.fillStyle=s.color;
-    ctx.beginPath(); ctx.arc(X(s.rec.first), Y(0), 3.5, 0, 7); ctx.fill();
-    ctx.globalAlpha=0.35; ctx.setLineDash([2,3]);
-    ctx.beginPath(); ctx.moveTo(X(s.rec.first), padT); ctx.lineTo(X(s.rec.first), padT+ih); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha=1;
-    ctx.beginPath(); ctx.arc(X(a[a.length-1].i), Y(prev), 3, 0, 7); ctx.fill();
-  });
 }
 function populateScope() {
   const sel=document.getElementById('gScope');
@@ -774,12 +708,15 @@ function fmtDay(ts) {
   const d=new Date(ts);
   return d.getDate()+'.'+(d.getMonth()+1)+'.';
 }
+function verbSeriesFor(attempts) {
+  return selVerbs.map((v,si)=>{
+    const pts=[];
+    attempts.forEach((e,i)=>{ if(e.v===v) pts.push({i:i, e:e}); });
+    return {verb:v, color:VERB_COLORS[si%VERB_COLORS.length], pts:pts};
+  }).filter(s=>s.pts.length);
+}
 function renderGraphs() {
-  const mode=gPlotMode();
-  document.getElementById('stairWrap').classList.toggle('hidden', mode!=='tense');
-  document.getElementById('verbWrap').classList.toggle('hidden', mode!=='verb');
-  document.getElementById('axisWrap').style.display = mode==='verb' ? 'none' : '';
-  if(mode==='verb') { populateVerbs(); renderVerbs(); return; }
+  populateVerbs();
   const data=graphData();
   const lastAt={};
   data.forEach((e,i)=>{
@@ -803,11 +740,16 @@ function renderGraphs() {
     }
     const c=a.filter(e=>e.r===1).length;
     const big = stairBig===tn;
-    let h='<div class="stair'+(big?' big':'')+'" data-tn="'+tn+'" title="'+(big?'Click to close the person breakdown':'Click to see yo / tú / él…')+'">'+
+    const vsel = verbSeriesFor(a);
+    const meta = vsel.length
+      ? vsel.map(s=>'<span style="color:'+s.color+'">'+escHtml(s.verb)+' '+s.pts.filter(p=>p.e.r===1).length+'/'+s.pts.length+'</span>').join(' · ')+
+        ' <span style="opacity:0.6">of '+a.length+' here</span>'
+      : a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%'+(big?'':' · click for persons');
+    let h='<div class="stair'+(big?' big':'')+'" data-tn="'+tn+'" title="'+(big?'Click to close':'Click to enlarge')+'">'+
       '<h3>'+escHtml(TLABEL[tn]||tn)+'</h3>'+
-      '<div class="meta">'+a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%'+(big?'':' · click for persons')+'</div>'+
+      '<div class="meta">'+meta+'</div>'+
       '<canvas id="stair_'+tn+'" height="'+(big?320:210)+'"></canvas>';
-    if(big && tn!=='infinitive') {
+    if(big && tn!=='infinitive' && !vsel.length) {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       h+='<div class="plegend">'+labels.map((lbl,p)=>{
         const pa=a.filter(e=>String(e.p)===String(p));
@@ -820,7 +762,7 @@ function renderGraphs() {
   }).join('');
   order.forEach(tn=>{
     if(!byTense[tn]) return;
-    if(stairBig===tn && tn!=='infinitive') {
+    if(stairBig===tn && tn!=='infinitive' && !verbSeriesFor(byTense[tn]).length) {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       const series=labels.map((lbl,p)=>({label:lbl, color:PERSON_COLORS[p],
         attempts:byTense[tn].filter(e=>String(e.p)===String(p))})).filter(s=>s.attempts.length);
@@ -837,6 +779,7 @@ function renderGraphs() {
       if(stairBig===tn) el.scrollIntoView({behavior:'smooth', block:'nearest'});
     });
   });
+  renderVerbTable();
 }
 const PERSON_COLORS=['#C9A44A','#3A7A56','#C0392B','#2E6E8E','#8E5A9E','#B8762C'];
 function classifyKind(e) {
@@ -890,12 +833,19 @@ function drawStair(cvId, attempts, height) {
   const N=attempts.length;
   const mode=gYMode();
   const vs=seriesValues(attempts, mode);
+  const vsel=verbSeriesFor(attempts);
+  const vseries=vsel.map(s=>{ let v=0; return s.pts.map(p=>{ v += (p.e.r===1)?(mode==='goal'?0.1:1):(mode==='goal'?-0.9:0); return {i:p.i, e:p.e, v:v}; }); });
   const timeMode = gAxisMode==='time';
   const layout = timeMode ? segLayout(padL, iw) : null;
   const tx = timeMode ? txFor(layout) : null;
   const X=i=>padL+iw*(i/Math.max(1,N));
   let lo, hi;
-  if(mode==='goal') { lo=Math.min(0, ...vs); hi=Math.max(0, ...vs); const pad=Math.max(1,(hi-lo)*0.1); lo-=pad; hi+=pad; }
+  if(vsel.length) {
+    lo=0; hi=1;
+    vseries.forEach(a=>a.forEach(p=>{ if(p.v<lo) lo=p.v; if(p.v>hi) hi=p.v; }));
+    const pad=Math.max(0.5,(hi-lo)*0.12); lo-=pad; hi+=pad;
+  }
+  else if(mode==='goal') { lo=Math.min(0, ...vs); hi=Math.max(0, ...vs); const pad=Math.max(1,(hi-lo)*0.1); lo-=pad; hi+=pad; }
   else { lo=0; hi=Math.max(1, vs[vs.length-1]||1); }
   const Y=v=>padT+ih*(1-(v-lo)/(hi-lo));
   ctx.font='9px -apple-system, sans-serif';
@@ -969,6 +919,23 @@ function drawStair(cvId, attempts, height) {
     ctx.setLineDash([]); ctx.globalAlpha=1;
   }
   drawDeco(ctx, attempts, timeMode, tx, X, padT, ih, accent);
+  if(vsel.length) {
+    vsel.forEach((s,si)=>{
+      const a=vseries[si];
+      ctx.strokeStyle=s.color; ctx.lineWidth=1.7;
+      ctx.beginPath();
+      ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0));
+      let pv=0;
+      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Y(pv)); ctx.lineTo(x, Y(p.v)); pv=p.v; });
+      ctx.stroke();
+      ctx.fillStyle=s.color;
+      ctx.beginPath(); ctx.arc(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0), 3.2, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(timeMode ? tx(a[a.length-1].e.ts) : X(a[a.length-1].i+1), Y(pv), 3, 0, 7); ctx.fill();
+      ctx.strokeStyle=bad; ctx.lineWidth=1.6;
+      a.forEach(p=>{ if(p.e.r!==1) { const x=timeMode?tx(p.e.ts):X(p.i+1); ctx.beginPath(); ctx.moveTo(x,padT+ih-1); ctx.lineTo(x,padT+ih-6); ctx.stroke(); } });
+    });
+    return;
+  }
   ctx.strokeStyle=accent; ctx.lineWidth=1.8;
   ctx.beginPath();
   ctx.moveTo(timeMode ? tx(attempts[0].ts) : X(0), Y(0));
@@ -1094,9 +1061,8 @@ function drawStairMulti(cvId, series, height) {
 }
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
 document.getElementById('tabGraphs').addEventListener('click', ()=>showView('graphs'));
-document.getElementById('gMode').addEventListener('change', renderGraphs);
-document.getElementById('vNewest').addEventListener('click', ()=>{ selVerbs=newestVerbs(4); populateVerbs(); renderVerbs(); });
-document.getElementById('vClear').addEventListener('click', ()=>{ selVerbs=[]; verbsAuto=false; populateVerbs(); renderVerbs(); });
+document.getElementById('vNewest').addEventListener('click', ()=>{ selVerbs=newestVerbs(4); renderGraphs(); });
+document.getElementById('vClear').addEventListener('click', ()=>{ selVerbs=[]; renderGraphs(); });
 document.getElementById('gScope').addEventListener('change', renderGraphs);
 document.getElementById('gAxis').addEventListener('change', renderGraphs);
 document.getElementById('gY').addEventListener('change', renderGraphs);
