@@ -128,10 +128,11 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 .plegend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 0.78rem; color: var(--text-secondary); }
 .plegend .pl { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
 .plegend .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.plegend .sw.dash { height: 0; border-top: 3px dashed currentColor; background: none !important; }
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp23</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp24</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -230,7 +231,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
     <div class="vpick" id="vPick"></div>
-    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them on the tense panels — same axes, same scale, the verb's own line drawn on top from where it first appears in that tense.
+    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them (dashed) on the tense panels — nothing else changes: same axes, same scale, same curves, the verb simply drawn on top in attempt order.
       <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
       <button class="ctl" id="vClear">clear</button>
     </div>
@@ -576,7 +577,7 @@ function showView(which) {
 }
 
 /* ---------- verb transfer view ---------- */
-const VERB_COLORS=['#C9A44A','#3A7A56','#C0392B','#2E6E8E','#8E5A9E','#B8762C','#4E9A8F','#A0522D'];
+const VERB_COLORS=['#E86A33','#00A8A8','#D62D6E','#7A5CD0','#9AA808','#0E7BC4','#C25E00','#5B8C5A'];
 let selVerbs=[], verbsAuto=true;
 function newestVerbs(n) {
   const {map}=verbIndex();
@@ -734,31 +735,28 @@ function renderGraphs() {
     const c=a.filter(e=>e.r===1).length;
     const big = stairBig===tn;
     const vsel = verbSeriesFor(a);
-    const vnote = vsel.length ? ' · '+vsel.map(s=>'<span style="color:'+s.color+'">'+escHtml(s.verb)+' '+s.pts.filter(p=>p.e.r===1).length+'/'+s.pts.length+'</span>').join(' ') : '';
     let h='<div class="stair'+(big?' big':'')+'" data-tn="'+tn+'" title="'+(big?'Click to close the person breakdown':'Click to see yo / tú / él…')+'">'+
       '<h3>'+escHtml(TLABEL[tn]||tn)+'</h3>'+
-      '<div class="meta">'+a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%'+(big?'':' · click for persons')+vnote+'</div>'+
+      '<div class="meta">'+a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%'+(big?'':' · click for persons')+'</div>'+
       '<canvas id="stair_'+tn+'" height="'+(big?320:210)+'"></canvas>';
-    if(big && vsel.length) {
-      h+='<div class="plegend">'+vsel.map(s=>{
-        const vc=s.pts.filter(p=>p.e.r===1).length;
-        return '<span class="pl"><span class="sw" style="background:'+s.color+'"></span>'+escHtml(s.verb)+' '+vc+'/'+s.pts.length+' here</span>';
-      }).join('')+'</div>';
-    }
-    else if(big && tn!=='infinitive') {
+    if(big && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       h+='<div class="plegend">'+labels.map((lbl,p)=>{
         const pa=a.filter(e=>String(e.p)===String(p));
         const pc=pa.filter(e=>e.r===1).length;
         return '<span class="pl"><span class="sw" style="background:'+PERSON_COLORS[p]+'"></span>'+escHtml(lbl)+
           (pa.length?(' '+pc+'/'+pa.length):' —')+'</span>';
-      }).join('')+'</div>';
+      }).join('')+
+      (vsel.length ? vsel.map(s=>{
+        const vc=s.pts.filter(p=>p.e.r===1).length;
+        return '<span class="pl"><span class="sw dash" style="background:'+s.color+'"></span>'+escHtml(s.verb)+' '+vc+'/'+s.pts.length+'</span>';
+      }).join('') : '')+'</div>';
     }
     return h+'</div>';
   }).join('');
   order.forEach(tn=>{
     if(!byTense[tn]) return;
-    if(stairBig===tn && tn!=='infinitive' && !verbSeriesFor(byTense[tn]).length) {
+    if(stairBig===tn && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       const arr=byTense[tn];
       const series=labels.map((lbl,p)=>{
@@ -934,7 +932,9 @@ function drawStair(cvId, attempts, height) {
   const lastX = timeMode ? tx(attempts[N-1].ts) : X(N);
   ctx.fillStyle=accent;
   ctx.beginPath(); ctx.arc(lastX, Y(prev), 3, 0, 7); ctx.fill();
-  // picked verbs: drawn on top, same axes and scale, nothing else altered
+  // picked verbs: drawn on top, same axes and scale, clipped to the frame
+  ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
+  ctx.setLineDash([5,3]);
   vsel.forEach((s,si)=>{
     const a=vseries[si];
     ctx.strokeStyle=s.color; ctx.lineWidth=(H>260?2.2:1.6);
@@ -947,6 +947,7 @@ function drawStair(cvId, attempts, height) {
     ctx.beginPath(); ctx.arc(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0), 3.2, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(timeMode ? tx(a[a.length-1].e.ts) : X(a[a.length-1].i+1), Y(pv), 3, 0, 7); ctx.fill();
   });
+  ctx.setLineDash([]); ctx.restore();
 }
 function drawStairMulti(cvId, attempts, series, height) {
   const cv=document.getElementById(cvId);
@@ -1008,6 +1009,8 @@ function drawStairMulti(cvId, attempts, series, height) {
   });
   // interval bars + practice-context strip for the whole tense
   drawDeco(ctx, attempts, timeMode, tx, X, padT, ih, accent);
+  const vsel=verbSeriesFor(attempts);
+  const vv=vsel.map(s=>{ let v=0; return s.pts.map(p=>{ if(p.e.r===1) v++; return {i:p.i, e:p.e, v:v}; }); });
   series.forEach((s,si)=>{
     const off=(si-(series.length-1)/2)*2.5;
     const a=vseries[si];
@@ -1025,6 +1028,22 @@ function drawStairMulti(cvId, attempts, series, height) {
     ctx.fillStyle=s.color;
     ctx.beginPath(); ctx.arc((timeMode ? tx(a[a.length-1].e.ts) : X(a[a.length-1].i+1))+off, Y(prev), 2.8, 0, 7); ctx.fill();
   });
+  // picked verbs on top of the person lines: same axes and scale, clipped
+  ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
+  ctx.setLineDash([5,3]);
+  vsel.forEach((s,si)=>{
+    const a=vv[si];
+    if(!a.length) return;
+    ctx.strokeStyle=s.color; ctx.lineWidth=2.2;
+    ctx.beginPath();
+    ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0));
+    let pv=0;
+    a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Y(pv)); ctx.lineTo(x, Y(p.v)); pv=p.v; });
+    ctx.stroke();
+    ctx.fillStyle=s.color;
+    ctx.beginPath(); ctx.arc(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0), 3.2, 0, 7); ctx.fill();
+  });
+  ctx.setLineDash([]); ctx.restore();
 }
 
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
