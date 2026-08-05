@@ -49,6 +49,10 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 .pthink { font-size: 0.85rem; color: var(--text-muted); margin: 18px 0; font-variant-numeric: tabular-nums; }
 .pthink .tbar { display: block; height: 4px; background: var(--surface-dim); border-radius: 3px; margin: 8px auto 0; max-width: 260px; overflow: hidden; }
 .pthink .tfill { display: block; height: 100%; background: var(--accent); width: 0; }
+.typed-mock { border: 1px solid var(--border); border-radius: 10px; background: var(--surface-dim); padding: 8px 14px; display: inline-block; min-width: 200px; min-height: 1.4em; }
+.pcaret { animation: pblink 1s step-end infinite; color: var(--accent); font-weight: 400; }
+@keyframes pblink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pcaret { animation: none; } }
 .pans { font-family: var(--font-display); font-size: 1.7rem; margin: 12px 0 2px; }
 .pans.ok { color: var(--good); }
 .pans.bad { color: var(--bad); }
@@ -262,7 +266,8 @@ function render(revealed) {
   let h='<div class="pcap">'+esc(TLABEL[e.tn]||e.tn)+(per?' · '+esc(per):'')+
     '<span class="kbadge" style="background:'+(KINDC[kind]||'#888')+'">'+kind+'</span></div>';
   if(!revealed) {
-    h+='<div class="peng">…recalling…</div>';
+    if(e.w) h+='<div class="peng typed-mock">&nbsp;<span id="typedSim"></span><span class="pcaret">|</span>&nbsp;</div>';
+    else h+='<div class="peng" style="opacity:0.5">\u2026recalling\u2026</div>';
     h+='<div class="pthink">thinking <span id="tclock">0.0</span> s'+
        '<span class="tbar"><span class="tfill" id="tfill"></span></span></div>';
   } else {
@@ -292,7 +297,10 @@ function playStep() {
     if(!el){ clearInterval(tick); return; }
     const gone=(Date.now()-t0)*(sp||1);
     el.textContent=(gone/1000).toFixed(1);
-    if(fl) fl.style.width=Math.min(100, 100*gone/((thinkMs(e,idx))||1))+'%';
+    const full=thinkMs(e,idx)||1;
+    if(fl) fl.style.width=Math.min(100, 100*gone/full)+'%';
+    const sim=document.getElementById('typedSim');
+    if(sim && e.w) sim.textContent=e.w.slice(0, Math.min(e.w.length, Math.floor(e.w.length*gone/full)));   // input appears proportional to time spent
   }, 80);
   timer=setTimeout(()=>{
     clearInterval(tick);
