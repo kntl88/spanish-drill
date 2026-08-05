@@ -131,7 +131,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp16</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp17</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -154,26 +154,6 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
   <div class="tabbar">
     <button class="tab cur" id="tabReplay">Replay</button>
     <button class="tab" id="tabGraphs">Graphs</button>
-    <button class="tab" id="tabVerbs">Verbs</button>
-  </div>
-  <div id="verbsView" class="hidden">
-    <div class="controls">
-      <div>
-        <label for="vY">Y-axis</label>
-        <select id="vY">
-          <option value="goal" selected>vs 90% goal</option>
-          <option value="climb">Total climb</option>
-        </select>
-      </div>
-      <label class="chk"><input type="checkbox" id="vPower"> include power practice</label>
-      <button class="ctl" id="vNewest">newest 4</button>
-      <button class="ctl" id="vClear">clear</button>
-    </div>
-    <div class="gsub">Each verb's line starts where it first appears in your whole practice history (x = attempt number overall), so a newcomer's curve begins mid-chart and you can watch how fast it catches the veterans. <b>vs 90% goal</b>: flat = holding 90%, rising = better, sagging = harder than target. Click verbs to compare.</div>
-    <div class="vpick" id="vPick"></div>
-    <canvas id="verbCanvas" height="360"></canvas>
-    <div class="plegend" id="vLegend"></div>
-    <div class="vtable" id="vTable"></div>
   </div>
   <div id="replayView">
   <div class="controls">
@@ -237,10 +217,17 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
   <div id="graphsView" class="hidden">
     <div class="controls">
       <div>
+        <label for="gMode">Plot</label>
+        <select id="gMode">
+          <option value="tense" selected>By tense / mood</option>
+          <option value="verb">By verb (transfer)</option>
+        </select>
+      </div>
+      <div>
         <label for="gScope">Verb type</label>
         <select id="gScope"></select>
       </div>
-      <div>
+      <div id="axisWrap">
         <label for="gAxis">X-axis</label>
         <select id="gAxis">
           <option value="attempt" selected>Per attempt</option>
@@ -256,9 +243,22 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       </div>
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
+    <div id="stairWrap">
     <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · <b>vs-90%-goal view: the green horizontal line IS the goal</b> — each correct climbs +0.1, each wrong drops −0.9, so flat = exactly 90%, rising = ahead, sagging = behind (green/red shading shows which) · total-climb view: y counts corrects, red tick = a wrong · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
     <div class="plegend" id="kindLegend" style="margin:-2px 0 10px"></div>
     <div class="stairs" id="stairGrid"></div>
+    </div>
+
+    <div id="verbWrap" class="hidden">
+      <div class="gsub" style="margin:-4px 0 10px">Each verb's line starts where it first entered your practice (x = attempt number across the whole history), so a newcomer begins mid-chart and you can watch how fast it catches the veterans. <b>vs 90% goal</b>: flat = holding target, sagging = this verb costs more than it should. Verb type filters the list; the axis always spans everything.
+        <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
+        <button class="ctl" id="vClear">clear</button>
+      </div>
+      <div class="vpick" id="vPick"></div>
+      <canvas id="verbCanvas" height="360"></canvas>
+      <div class="plegend" id="vLegend"></div>
+      <div class="vtable" id="vTable"></div>
+    </div>
   </div>
 </div>
 
@@ -586,12 +586,11 @@ document.getElementById('ghPw').addEventListener('keydown', ev=>{ if(ev.key==='E
 /* ---------- graphs: per-tense staircases ---------- */
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function showView(which) {
-  [['replay','replayView','tabReplay'],['graphs','graphsView','tabGraphs'],['verbs','verbsView','tabVerbs']].forEach(([k,v,t])=>{
+  [['replay','replayView','tabReplay'],['graphs','graphsView','tabGraphs']].forEach(([k,v,t])=>{
     document.getElementById(v).classList.toggle('hidden', which!==k);
     document.getElementById(t).classList.toggle('cur', which===k);
   });
   if(which==='graphs') { populateScope(); renderGraphs(); }
-  if(which==='verbs') { populateVerbs(); renderVerbs(); }
 }
 
 /* ---------- verb transfer view ---------- */
@@ -601,9 +600,10 @@ function newestVerbs(n) {
   const {map}=verbIndex();
   return Object.values(map).sort((a,b)=>a.first-b.first).slice(-n).map(v=>v.verb);
 }
+function gPlotMode() { const el=document.getElementById('gMode'); return (el&&el.value)||'tense'; }
 function verbData() {
-  const withPower=document.getElementById('vPower').checked;
-  return allAttempts.filter(e=>withPower || e.k!=='power');
+  const withPower=document.getElementById('gPower').checked;
+  return allAttempts.filter(e=>withPower || e.k!=='power');   // axis spans the whole history
 }
 function verbIndex() {
   const data=verbData();
@@ -617,7 +617,8 @@ function verbIndex() {
 }
 function populateVerbs() {
   const {map}=verbIndex();
-  const list=Object.values(map).sort((a,b)=>a.first-b.first);
+  const scope=(document.getElementById('gScope')||{}).value||'';
+  const list=Object.values(map).filter(v=>!scope || v.g===scope).sort((a,b)=>a.first-b.first);
   if(verbsAuto && !selVerbs.length) { selVerbs=list.slice(-4).map(v=>v.verb); verbsAuto=false; }   // newest arrivals by default
   document.getElementById('vPick').innerHTML=list.map(v=>{
     const on=selVerbs.indexOf(v.verb)!==-1;
@@ -635,7 +636,7 @@ function populateVerbs() {
 }
 function renderVerbs() {
   const {data, map}=verbIndex();
-  const mode=(document.getElementById('vY')||{}).value||'goal';
+  const mode=gYMode();
   const series=selVerbs.map((v,si)=>({verb:v, color:VERB_COLORS[si%VERB_COLORS.length], rec:map[v]})).filter(s=>s.rec);
   drawVerbChart(data.length, series, mode);
   document.getElementById('vLegend').innerHTML=series.map(s=>{
@@ -774,6 +775,11 @@ function fmtDay(ts) {
   return d.getDate()+'.'+(d.getMonth()+1)+'.';
 }
 function renderGraphs() {
+  const mode=gPlotMode();
+  document.getElementById('stairWrap').classList.toggle('hidden', mode!=='tense');
+  document.getElementById('verbWrap').classList.toggle('hidden', mode!=='verb');
+  document.getElementById('axisWrap').style.display = mode==='verb' ? 'none' : '';
+  if(mode==='verb') { populateVerbs(); renderVerbs(); return; }
   const data=graphData();
   const lastAt={};
   data.forEach((e,i)=>{
@@ -1088,9 +1094,7 @@ function drawStairMulti(cvId, series, height) {
 }
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
 document.getElementById('tabGraphs').addEventListener('click', ()=>showView('graphs'));
-document.getElementById('tabVerbs').addEventListener('click', ()=>showView('verbs'));
-document.getElementById('vY').addEventListener('change', renderVerbs);
-document.getElementById('vPower').addEventListener('change', ()=>{ populateVerbs(); renderVerbs(); });
+document.getElementById('gMode').addEventListener('change', renderGraphs);
 document.getElementById('vNewest').addEventListener('click', ()=>{ selVerbs=newestVerbs(4); populateVerbs(); renderVerbs(); });
 document.getElementById('vClear').addEventListener('click', ()=>{ selVerbs=[]; verbsAuto=false; populateVerbs(); renderVerbs(); });
 document.getElementById('gScope').addEventListener('change', renderGraphs);
