@@ -285,7 +285,7 @@ function render(revealed) {
     h+='<div class="pans '+(e.r===1?'ok':'bad')+'">'+esc(e.v)+(e.tn!=='infinitive'&&e.w&&e.r===1?' → '+esc(e.w):'')+'</div>';
     if(e.w && e.r!==1) h+='<div class="pwrote">wrote: '+esc(e.w)+'</div>';
     h+='<div class="pans '+(e.r===1?'ok':'bad')+'" style="font-size:1.2rem">'+(e.r===1?'✓ correct':'✗ wrong')+'</div>';
-    h+='<div class="pmeta">'+(e.ms!=null?('thought '+(e.ms/1000).toFixed(1)+' s · '):'')+(e.typed?'typed':'tap-reveal')+(e.due?' · star chance':'')+(e.iv!=null?' · interval item':'')+'</div>';
+    h+='<div class="pmeta">'+(e.ms!=null?('thought '+(e.ms/1000).toFixed(1)+' s · '):'')+(e.typed?'typed':'tap-reveal')+(e.bs?(' · '+e.bs+' backspace'+(e.bs>1?'s':'')):'')+(e.due?' · star chance':'')+(e.iv!=null?' · interval item':'')+'</div>';
   }
   document.getElementById('pcard').innerHTML=h;
   const done=cur.items.slice(0, idx+(revealed?1:0));
