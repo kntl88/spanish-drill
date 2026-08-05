@@ -131,7 +131,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp20</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp21</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -242,7 +242,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       <button class="ctl" id="vClear">clear</button>
     </div>
     <div id="stairWrap">
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · <b>vs-90%-goal view: the green horizontal line IS the goal</b> — each correct climbs +0.1, each wrong drops −0.9, so flat = exactly 90%, rising = ahead, sagging = behind (green/red shading shows which) · total-climb view: y counts corrects, red tick = a wrong · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · <b>vs-90%-goal view: the green horizontal line IS the goal</b> — each correct climbs +0.1, each wrong drops −0.9, so flat = exactly 90%, rising = ahead, sagging = behind (green/red shading shows which) · total-climb view: y counts corrects, red tick = a wrong · per-attempt mode: grey dash = perfect run, green dash = the 90% target trajectory · calendar mode: x is real time, idle gaps compressed to a dashed break · full-height dashed rules mark where a new stage began (labelled when enlarged) · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
     <div class="plegend" id="kindLegend" style="margin:-2px 0 10px"></div>
     <div class="stairs" id="stairGrid"></div>
     <div class="vtable" id="vTable"></div>
@@ -784,6 +784,24 @@ function renderGraphs() {
   });
   renderVerbTable();
 }
+const STAGE_NAMES=["Present · -AR verbs", "Present · -ER verbs", "Present · -IR verbs", "Present · all together", "Preterite · -AR new forms", "Preterite · -AR mixed in", "Preterite · -AR with new verbs", "Preterite · -ER new forms", "Preterite · -ER mixed in", "Preterite · -ER with new verbs", "Preterite · -IR new forms", "Preterite · -IR mixed in", "Preterite · -IR with new verbs", "Preterite · all together", "Future · Regular", "Imperfect · Regular", "Conditional · Regular", "Imperative I · affirmative commands", "Imperative II · negative commands", "Stem changing AR & ER verbs", "Stem changing IR · two changes", "Stem changing IR · one change", "Irregular · ser", "Irregular · estar", "Irregular · ir", "Irregular · tener", "Irregular · hacer", "Irregular · decir", "Spelling · keep the sound", "Spelling · -CER verbs", "Spelling · -GER verbs", "Spelling · -GIR verbs", "Spelling · -GUIR verbs"];
+function stageMarks(attempts) {
+  // where a new stage begins inside this panel: authoritative from the logged
+  // stage index, inferred from the practice signature (type + interval phase)
+  // for history recorded before stage logging existed.
+  const out=[], seen={};
+  attempts.forEach((e,i)=>{
+    let sig=null, label=null;
+    if(e.st!=null) { sig='st'+e.st; label=STAGE_NAMES[e.st]||('stage '+(e.st+1)); }
+    else if(e.k==='active'||e.k==='ivl'||e.k==='intro') {
+      sig='g'+e.g+'|'+(e.ph||'');
+      label=(GID_LABEL[e.g]||e.g).replace('Regular ','')+(e.ph?' · '+(e.ph==='mixed2'?'with new verbs':e.ph==='mixed'?'mixed':'new forms'):'');
+    }
+    if(!sig) return;
+    if(!seen[sig]) { seen[sig]=1; if(i>0) out.push({i:i, e:e, label:label}); }
+  });
+  return out;
+}
 const PERSON_COLORS=['#C9A44A','#3A7A56','#C0392B','#2E6E8E','#8E5A9E','#B8762C'];
 function classifyKind(e) {
   if(e.k==='power') return 'power';
@@ -916,6 +934,14 @@ function drawStair(cvId, attempts, height) {
     ctx.beginPath(); ctx.moveTo(X(0),Y(0)); ctx.lineTo(X(reach9),Y(reach9*0.9)); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha=1;
   }
+  // stage boundaries: full-height dashed rules behind everything
+  stageMarks(attempts).forEach(m=>{
+    const x = timeMode ? tx(m.e.ts) : X(m.i);
+    ctx.strokeStyle=muted; ctx.globalAlpha=0.5; ctx.setLineDash([4,3]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT+ih); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    if(H>260 && m.label) { ctx.fillStyle=muted; ctx.textAlign='left'; ctx.fillText(m.label, x+3, padT+9); }
+  });
   drawDeco(ctx, attempts, timeMode, tx, X, padT, ih, accent);
   ctx.strokeStyle=accent; ctx.lineWidth=1.8;
   ctx.beginPath();
