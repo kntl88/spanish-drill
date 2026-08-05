@@ -131,7 +131,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp19</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp20</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -746,7 +746,13 @@ function renderGraphs() {
       '<h3>'+escHtml(TLABEL[tn]||tn)+'</h3>'+
       '<div class="meta">'+a.length+' attempts · '+c+' correct · '+Math.round(100*c/a.length)+'%'+(big?'':' · click for persons')+vnote+'</div>'+
       '<canvas id="stair_'+tn+'" height="'+(big?320:210)+'"></canvas>';
-    if(big && tn!=='infinitive') {
+    if(big && vsel.length) {
+      h+='<div class="plegend">'+vsel.map(s=>{
+        const vc=s.pts.filter(p=>p.e.r===1).length;
+        return '<span class="pl"><span class="sw" style="background:'+s.color+'"></span>'+escHtml(s.verb)+' '+vc+'/'+s.pts.length+' here</span>';
+      }).join('')+'</div>';
+    }
+    else if(big && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       h+='<div class="plegend">'+labels.map((lbl,p)=>{
         const pa=a.filter(e=>String(e.p)===String(p));
@@ -759,7 +765,7 @@ function renderGraphs() {
   }).join('');
   order.forEach(tn=>{
     if(!byTense[tn]) return;
-    if(stairBig===tn && tn!=='infinitive') {
+    if(stairBig===tn && tn!=='infinitive' && !verbSeriesFor(byTense[tn]).length) {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       const series=labels.map((lbl,p)=>({label:lbl, color:PERSON_COLORS[p],
         attempts:byTense[tn].filter(e=>String(e.p)===String(p))})).filter(s=>s.attempts.length);
@@ -932,7 +938,7 @@ function drawStair(cvId, attempts, height) {
   // picked verbs: drawn on top, same axes and scale, nothing else altered
   vsel.forEach((s,si)=>{
     const a=vseries[si];
-    ctx.strokeStyle=s.color; ctx.lineWidth=1.6;
+    ctx.strokeStyle=s.color; ctx.lineWidth=(H>260?2.2:1.6);
     ctx.beginPath();
     ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0));
     let pv=0;
