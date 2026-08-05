@@ -48,6 +48,7 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 .drill-english { font-family: var(--font-display); font-size: 1.55rem; line-height: 1.3; }
 .drill-tense { text-align: right; font-size: 0.74rem; color: var(--text-muted); min-width: 130px; }
 .kbadge { display: inline-block; font-size: 0.68rem; padding: 1px 8px; border-radius: 9px; color: #fff; margin-top: 4px; }
+.pstars { font-size: 0.95rem; color: var(--accent); letter-spacing: 1px; margin-top: 3px; }
 .drill-answer { border: 1px dashed var(--border); border-radius: 10px; min-height: 74px; margin-top: 16px; display: flex; align-items: center; justify-content: center; padding: 12px; }
 .drill-answer.revealed { border-style: solid; }
 .tap-dim { color: var(--text-muted); font-size: 0.95rem; }
@@ -72,7 +73,7 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp8</span></small></h1>
+  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp9</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -98,14 +99,14 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 <div id="player" class="hidden">
   <div class="controls">
     <button class="ctl" id="btnBack2">⏮ Sessions</button>
-    <button class="ctl play" id="btnPlay">▶ Play</button>
+    <button class="ctl play" id="btnPlay">▶ / Enter</button>
     <button class="ctl" id="btnStep">›</button>
     <select id="speedSel">
       <option value="1">1× real time</option>
       <option value="2" selected>2×</option>
       <option value="5">5×</option>
       <option value="15">15×</option>
-      <option value="0">step only</option>
+      <option value="0">skip thinking</option>
     </select>
     <input type="range" id="scrub" min="0" value="0" step="1">
     <span id="posLabel">0 / 0</span>
@@ -115,7 +116,7 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
     <div id="pcard"></div>
     <div class="runline" id="runline"></div>
   </div>
-  <div class="foot">The card holds for as long as the learner actually thought (logged think-time), then reveals what happened. Space = play/pause · → = step.</div>
+  <div class="foot">▶ plays the card's real think-time (typing and corrections included), then the reveal <b>holds until you press Enter</b> — just like the app. Enter during thinking skips to the reveal. ← goes back.</div>
 </div>
 
 <script>
@@ -124,6 +125,8 @@ const TLABEL={infinitive:'Infinitive', present:'Present', preterite:'Preterite',
   future:'Future', conditional:'Conditional', imperative_aff:'Imp (+)', imperative_neg:'Imp (−)'};
 const PERSONS=['yo','tú','él/ella','nosotros','vosotros','ellos/ellas'];
 const IMPP=['tú','usted','nosotros','vosotros','ustedes'];
+const STAGES=[{"l":"Present · -AR verbs","e":0},{"l":"Present · -ER verbs","e":0},{"l":"Present · -IR verbs","e":0},{"l":"Present · all together","e":1},{"l":"Preterite · -AR new forms","e":0},{"l":"Preterite · -AR mixed in","e":0},{"l":"Preterite · -AR with new verbs","e":0},{"l":"Preterite · -ER new forms","e":0},{"l":"Preterite · -ER mixed in","e":0},{"l":"Preterite · -ER with new verbs","e":0},{"l":"Preterite · -IR new forms","e":0},{"l":"Preterite · -IR mixed in","e":0},{"l":"Preterite · -IR with new verbs","e":0},{"l":"Preterite · all together","e":1},{"l":"Future · Regular","e":1},{"l":"Imperfect · Regular","e":1},{"l":"Conditional · Regular","e":1},{"l":"Imperative I · affirmative commands","e":0},{"l":"Imperative II · negative commands","e":1},{"l":"Stem changing AR & ER verbs","e":0},{"l":"Stem changing IR · two changes","e":0},{"l":"Stem changing IR · one change","e":0},{"l":"Irregular · ser","e":0},{"l":"Irregular · estar","e":0},{"l":"Irregular · ir","e":0},{"l":"Irregular · tener","e":0},{"l":"Irregular · hacer","e":0},{"l":"Irregular · decir","e":1},{"l":"Spelling · keep the sound","e":1},{"l":"Spelling · -CER verbs","e":0},{"l":"Spelling · -GER verbs","e":0},{"l":"Spelling · -GIR verbs","e":0},{"l":"Spelling · -GUIR verbs","e":1}];
+function levelOf(st){ if(st==null||!STAGES[st]) return null; for(let i=st;i<STAGES.length;i++){ if(STAGES[i].e) return (STAGES[i].l.split('·')[0]||'').trim(); } return null; }
 const ENP=['I','you','he','we','you all','they'];
 const VERB_EN={"hablar":["to speak","speak","speaks","spoke"],"caminar":["to walk","walk","walks","walked"],"trabajar":["to work","work","works","worked"],"comprar":["to buy","buy","buys","bought"],"estudiar":["to study","study","studies","studied"],"escuchar":["to listen","listen","listens","listened"],"mirar":["to watch","watch","watches","watched"],"comer":["to eat","eat","eats","ate"],"beber":["to drink","drink","drinks","drank"],"aprender":["to learn","learn","learns","learned"],"correr":["to run","run","runs","ran"],"vender":["to sell","sell","sells","sold"],"responder":["to answer","answer","answers","answered"],"prometer":["to promise","promise","promises","promised"],"vivir":["to live","live","lives","lived"],"decidir":["to decide","decide","decides","decided"],"subir":["to go up","climb","climbs","climbed"],"recibir":["to receive","receive","receives","received"],"abrir":["to open","open","opens","opened"],"compartir":["to share","share","shares","shared"],"pensar":["to think","think","thinks","thought"],"contar":["to count, to tell","count","counts","counted"],"cerrar":["to close","close","closes","closed"],"volver":["to return","return","returns","returned"],"encontrar":["to find","find","finds","found"],"entender":["to understand","understand","understands","understood"],"recordar":["to remember","remember","remembers","remembered"],"querer":["to want","want","wants","wanted"],"sentir":["to feel","feel","feels","felt"],"dormir":["to sleep","sleep","sleeps","slept"],"mentir":["to lie","lie","lies","lied"],"morir":["to die","die","dies","died"],"advertir":["to warn","warn","warns","warned"],"convertir":["to convert","convert","converts","converted"],"pedir":["to ask for","ask for","asks for","asked for"],"servir":["to serve","serve","serves","served"],"repetir":["to repeat","repeat","repeats","repeated"],"medir":["to measure","measure","measures","measured"],"vestir":["to dress","dress","dresses","dressed"],"buscar":["to search","search","searches","searched"],"llegar":["to arrive","arrive","arrives","arrived"],"cruzar":["to cross","cross","crosses","crossed"],"tocar":["to touch, to play","play","plays","played"],"pagar":["to pay","pay","pays","paid"],"empezar":["to begin","begin","begins","began"],"conocer":["to know, to meet","know","knows","knew"],"vencer":["to defeat","defeat","defeats","defeated"],"recoger":["to pick up","pick up","picks up","picked up"],"escoger":["to choose","choose","chooses","chose"],"dirigir":["to direct","direct","directs","directed"],"exigir":["to demand","demand","demands","demanded"],"distinguir":["to distinguish","distinguish","distinguishes","distinguished"],"seguir":["to follow","follow","follows","followed"],"traducir":["to translate","translate","translates","translated"],"producir":["to produce","produce","produces","produced"],"conducir":["to drive","drive","drives","drove"],"construir":["to build","build","builds","built"],"destruir":["to destroy","destroy","destroys","destroyed"],"incluir":["to include","include","includes","included"],"leer":["to read","read","reads","read"],"creer":["to believe","believe","believes","believed"],"poseer":["to possess","possess","possesses","possessed"],"proveer":["to provide","provide","provides","provided"],"enviar":["to send","send","sends","sent"],"confiar":["to trust","trust","trusts","trusted"],"actuar":["to act","act","acts","acted"],"continuar":["to continue","continue","continues","continued"],"hacer":["to do, to make","do","does","did"],"decir":["to say, to tell","say","says","said"],"dar":["to give","give","gives","gave"],"ver":["to see","see","sees","saw"],"saber":["to know (facts)","know","knows","knew"],"caer":["to fall","fall","falls","fell"],"traer":["to bring","bring","brings","brought"],"oír":["to hear","hear","hears","heard"],"andar":["to walk","walk","walks","walked"],"poner":["to put","put","puts","put"],"salir":["to leave","leave","leaves","left"],"caber":["to fit","fit","fits","fit"]};
 const KINDC={power:'#8E5A9E', redeem:'#B8762C', square:'#2E6E8E', ivl:'#3A7A56', ivlInf:'#6FAE8B', intro:'#C9A44A', round:'#5B8DB0', maint:'#8a8a8a', other:'#8a8a8a'};
@@ -276,11 +279,6 @@ function thinkMs(e, i) {
   const nxt=cur.items[i+1];
   return Math.min(nxt ? Math.max(600, (nxt.ts-e.ts)*0.6) : 2500, 12000);
 }
-function gapMs(e, i) {   // reveal-to-next-card time from real timestamps
-  const nxt=cur.items[i+1];
-  if(!nxt) return 1500;
-  return Math.max(400, Math.min((nxt.ts-e.ts)-thinkMs(e,i), 15000));
-}
 function edTimeline(e) {
   // exact edit replay from the recorded op runs: doomed chars are dashes,
   // backspaces peel them one by one, kept chars show their real letters
@@ -320,11 +318,20 @@ function render(revealed) {
   const kind=kindOf(e);
   const per = e.tn==='infinitive'||e.p==null ? null
     : (e.tn && e.tn.indexOf('imperative')===0 ? IMPP[e.p]||('p'+e.p) : PERSONS[e.p]||('p'+e.p));
-  document.getElementById('ptitle').textContent='Session replay · card '+(idx+1)+' of '+cur.items.length;
+  const stg = e.st!=null && STAGES[e.st] ? STAGES[e.st].l : null;
+  const lvl = levelOf(e.st);
+  document.getElementById('ptitle').textContent=(stg ? stg+(lvl?' · level: '+lvl:'') : 'Session replay')+' · card '+(idx+1)+' of '+cur.items.length;
   document.getElementById('pclockrow').textContent=new Date(e.ts).toLocaleTimeString();
+  let prog='';
+  if(e.iv!=null) { let b=''; for(let i2=0;i2<8;i2++) b+=i2<Math.min(e.iv,8)?'●':'○'; prog='<div class="pstars">'+b+'</div>'; }
+  else if(e.k==='ivlInf') prog='<div class="pstars">verb recall</div>';
+  else if(e.sq!=null) { let b=''; for(let i2=0;i2<3;i2++) b+=i2<e.sq?'■':'□'; prog='<div class="pstars">'+b+' settling in</div>'; }
+  else if(e.k && e.k.indexOf('redeem')!==-1) prog='<div class="pstars">✧ at risk</div>';
+  else if(e.s!=null) { const big=Math.floor(e.s/3), rem=e.s%3; prog='<div class="pstars">'+'★'.repeat(big)+'✦'.repeat(rem)+'</div>'; }
+  else if(e.lvl!=null) { let b=''; for(let i2=0;i2<3;i2++) b+=i2<e.lvl?'●':'○'; prog='<div class="pstars">'+b+'</div>'; }
   let h='<div class="drill-box"><div class="drill-prompt">'+
     '<div class="drill-english">'+englishFor(e)+'</div>'+
-    '<div class="drill-tense">'+esc(TLABEL[e.tn]||e.tn)+(per?' · '+esc(per):'')+(e.due?'<br>star chance':'')+
+    '<div class="drill-tense">'+esc(TLABEL[e.tn]||e.tn)+(per?' · '+esc(per):'')+prog+(e.due?'<br>star chance':'')+
     '<br><span class="kbadge" style="background:'+(KINDC[kind]||'#888')+'">'+kind+'</span></div></div>';
   if(!revealed) {
     h+='<div class="drill-answer">';
@@ -353,9 +360,12 @@ function render(revealed) {
   document.getElementById('posLabel').textContent=(idx+1)+' / '+cur.items.length;
 }
 function speed(){ return parseFloat(document.getElementById('speedSel').value)||0; }
+let revealedNow=false;
 function playStep() {
   const e=cur.items[idx];
   const sp=speed();
+  revealedNow=false;
+  if(sp===0) { revealedNow=true; render(true); return; }
   render(false);
   const tm=thinkMs(e, idx)/(sp||1);
   const t0=Date.now();
@@ -393,36 +403,32 @@ function playStep() {
   }, 80);
   timer=setTimeout(()=>{
     clearInterval(tick);
-    render(true);
-    timer=setTimeout(()=>{
-      if(idx<cur.items.length-1){ idx++; playStep(); }
-      else stop();
-    }, gapMs(e, idx)/(sp||1));
+    timer=null;
+    revealedNow=true;
+    render(true);           // holds here until Enter — like the app
   }, tm);
-}
-function play() {
-  if(timer) return;
-  if(speed()===0){ step(); return; }
-  document.getElementById('btnPlay').textContent='⏸ Pause';
-  playStep();
 }
 function stop() {
   if(timer){ clearTimeout(timer); timer=null; }
-  document.getElementById('btnPlay').textContent='▶ Play';
 }
-function step() {
-  stop();
-  render(true);
-  if(idx<cur.items.length-1){ idx++; setTimeout(()=>render(true), 0); }
+function advance() {
+  if(timer) {               // still thinking: skip to the reveal
+    stop();
+    revealedNow=true;
+    render(true);
+    return;
+  }
+  if(!revealedNow) { playStep(); return; }
+  if(idx<cur.items.length-1) { idx++; playStep(); }
 }
-document.getElementById('btnPlay').addEventListener('click', ()=>{ if(timer) stop(); else play(); });
-document.getElementById('btnStep').addEventListener('click', ()=>{ stop(); if(idx<cur.items.length-1){ idx++; } render(true); });
-document.getElementById('scrub').addEventListener('input', ev=>{ stop(); idx=+ev.target.value; render(true); });
-document.getElementById('speedSel').addEventListener('change', ()=>{ if(timer){ stop(); play(); } });
+document.getElementById('btnPlay').addEventListener('click', advance);
+document.getElementById('btnStep').addEventListener('click', ()=>{ stop(); revealedNow=true; if(idx<cur.items.length-1){ idx++; } render(true); });
+document.getElementById('scrub').addEventListener('input', ev=>{ stop(); idx=+ev.target.value; revealedNow=true; render(true); });
+document.getElementById('speedSel').addEventListener('change', ()=>{});
 document.addEventListener('keydown', e=>{
   if(document.getElementById('player').classList.contains('hidden')) return;
-  if(e.key===' '){ e.preventDefault(); if(timer) stop(); else play(); }
-  else if(e.key==='ArrowRight'){ stop(); if(idx<cur.items.length-1) idx++; render(true); }
-  else if(e.key==='ArrowLeft'){ stop(); if(idx>0) idx--; render(true); }
+  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); advance(); }
+  else if(e.key==='ArrowRight'){ stop(); revealedNow=true; if(idx<cur.items.length-1) idx++; render(true); }
+  else if(e.key==='ArrowLeft'){ stop(); revealedNow=true; if(idx>0) idx--; render(true); }
 });
 </script>
