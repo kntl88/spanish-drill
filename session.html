@@ -82,7 +82,7 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp12</span></small></h1>
+  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp13</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -461,8 +461,10 @@ function edTimeline(e) {
 }
 function histStripHtml(cur) {
   const cell=[cur.g, cur.tn, String(cur.p==null?0:cur.p)];
+  const vFilter = cur.tn==='infinitive' ? cur.v : null;   // infinitive cards ARE the verb
   const hist=[]; let prevIdx=null;
   allItems.forEach((e,i)=>{
+    if(vFilter && e.v!==vFilter) return;
     if(e.g===cell[0] && e.tn===cell[1] && String(e.p==null?0:e.p)===cell[2]) {
       hist.push({r:e.r, ts:e.ts, ref:e, gap: prevIdx==null?null:(i-prevIdx-1)});
       prevIdx=i;
@@ -484,7 +486,7 @@ function histStripHtml(cur) {
     const cls = i===ci ? ' dh-cur' : (ci!==-1 && i>ci ? ' dh-future' : '');
     out+='<span class="dh-col'+cls+'"><i>'+(h.gap==null?'\u00b7':h.gap)+'</i>'+(h.r===1?'<span class="dh-ok">\u2713</span>':'<span class="dh-x">\u2717</span>')+'</span>';
   });
-  return '<div class="dev-hist">cell '+hist.length+': '+out+'</div>';
+  return '<div class="dev-hist">'+(vFilter?vFilter:'cell')+' '+hist.length+': '+out+'</div>';
 }
 function expectedForm(e) {
   try {
