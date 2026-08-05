@@ -72,7 +72,7 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp6</span></small></h1>
+  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp7</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -352,7 +352,21 @@ function playStep() {
       const start=(e.fk!=null && e.fk<full) ? e.fk : full*0.35;   // typing starts at the real first key when logged
       const span=Math.max(200, full-start);
       const frac=Math.max(0, Math.min(1, (gone-start)/span));
-      sim.textContent=e.w.slice(0, Math.floor(e.w.length*frac));
+      const bs=e.bs||0, L=e.w.length;
+      if(!bs) {
+        sim.textContent=e.w.slice(0, Math.floor(L*frac));
+      } else {
+        // deletions shown as dashes at a deterministic correction point (exact spot isn't logged)
+        const cut=1+(e.ts%Math.max(1, L-1));
+        const total=L+bs;
+        const k=Math.floor(total*frac);
+        if(k<=cut) sim.textContent=e.w.slice(0, k);
+        else {
+          const d=Math.min(bs, k-cut);
+          const rest=Math.max(0, k-cut-bs);
+          sim.textContent=e.w.slice(0, cut)+'-'.repeat(d)+e.w.slice(cut, cut+rest);
+        }
+      }
     }
   }, 80);
   timer=setTimeout(()=>{
