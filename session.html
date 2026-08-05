@@ -82,7 +82,7 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp10</span></small></h1>
+  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp11</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -137,7 +137,157 @@ const IMPP=['tú','usted','nosotros','vosotros','ustedes'];
 const STAGES=[{"l":"Present · -AR verbs","e":0},{"l":"Present · -ER verbs","e":0},{"l":"Present · -IR verbs","e":0},{"l":"Present · all together","e":1},{"l":"Preterite · -AR new forms","e":0},{"l":"Preterite · -AR mixed in","e":0},{"l":"Preterite · -AR with new verbs","e":0},{"l":"Preterite · -ER new forms","e":0},{"l":"Preterite · -ER mixed in","e":0},{"l":"Preterite · -ER with new verbs","e":0},{"l":"Preterite · -IR new forms","e":0},{"l":"Preterite · -IR mixed in","e":0},{"l":"Preterite · -IR with new verbs","e":0},{"l":"Preterite · all together","e":1},{"l":"Future · Regular","e":1},{"l":"Imperfect · Regular","e":1},{"l":"Conditional · Regular","e":1},{"l":"Imperative I · affirmative commands","e":0},{"l":"Imperative II · negative commands","e":1},{"l":"Stem changing AR & ER verbs","e":0},{"l":"Stem changing IR · two changes","e":0},{"l":"Stem changing IR · one change","e":0},{"l":"Irregular · ser","e":0},{"l":"Irregular · estar","e":0},{"l":"Irregular · ir","e":0},{"l":"Irregular · tener","e":0},{"l":"Irregular · hacer","e":0},{"l":"Irregular · decir","e":1},{"l":"Spelling · keep the sound","e":1},{"l":"Spelling · -CER verbs","e":0},{"l":"Spelling · -GER verbs","e":0},{"l":"Spelling · -GIR verbs","e":0},{"l":"Spelling · -GUIR verbs","e":1}];
 function levelOf(st){ if(st==null||!STAGES[st]) return null; for(let i=st;i<STAGES.length;i++){ if(STAGES[i].e) return (STAGES[i].l.split('·')[0]||'').trim(); } return null; }
 const ENP=['I','you','he','we','you all','they'];
-const VERB_EN={"hablar":["to speak","speak","speaks","spoke"],"caminar":["to walk","walk","walks","walked"],"trabajar":["to work","work","works","worked"],"comprar":["to buy","buy","buys","bought"],"estudiar":["to study","study","studies","studied"],"escuchar":["to listen","listen","listens","listened"],"mirar":["to watch","watch","watches","watched"],"comer":["to eat","eat","eats","ate"],"beber":["to drink","drink","drinks","drank"],"aprender":["to learn","learn","learns","learned"],"correr":["to run","run","runs","ran"],"vender":["to sell","sell","sells","sold"],"responder":["to answer","answer","answers","answered"],"prometer":["to promise","promise","promises","promised"],"vivir":["to live","live","lives","lived"],"decidir":["to decide","decide","decides","decided"],"subir":["to go up","climb","climbs","climbed"],"recibir":["to receive","receive","receives","received"],"abrir":["to open","open","opens","opened"],"compartir":["to share","share","shares","shared"],"pensar":["to think","think","thinks","thought"],"contar":["to count, to tell","count","counts","counted"],"cerrar":["to close","close","closes","closed"],"volver":["to return","return","returns","returned"],"encontrar":["to find","find","finds","found"],"entender":["to understand","understand","understands","understood"],"recordar":["to remember","remember","remembers","remembered"],"querer":["to want","want","wants","wanted"],"sentir":["to feel","feel","feels","felt"],"dormir":["to sleep","sleep","sleeps","slept"],"mentir":["to lie","lie","lies","lied"],"morir":["to die","die","dies","died"],"advertir":["to warn","warn","warns","warned"],"convertir":["to convert","convert","converts","converted"],"pedir":["to ask for","ask for","asks for","asked for"],"servir":["to serve","serve","serves","served"],"repetir":["to repeat","repeat","repeats","repeated"],"medir":["to measure","measure","measures","measured"],"vestir":["to dress","dress","dresses","dressed"],"buscar":["to search","search","searches","searched"],"llegar":["to arrive","arrive","arrives","arrived"],"cruzar":["to cross","cross","crosses","crossed"],"tocar":["to touch, to play","play","plays","played"],"pagar":["to pay","pay","pays","paid"],"empezar":["to begin","begin","begins","began"],"conocer":["to know, to meet","know","knows","knew"],"vencer":["to defeat","defeat","defeats","defeated"],"recoger":["to pick up","pick up","picks up","picked up"],"escoger":["to choose","choose","chooses","chose"],"dirigir":["to direct","direct","directs","directed"],"exigir":["to demand","demand","demands","demanded"],"distinguir":["to distinguish","distinguish","distinguishes","distinguished"],"seguir":["to follow","follow","follows","followed"],"traducir":["to translate","translate","translates","translated"],"producir":["to produce","produce","produces","produced"],"conducir":["to drive","drive","drives","drove"],"construir":["to build","build","builds","built"],"destruir":["to destroy","destroy","destroys","destroyed"],"incluir":["to include","include","includes","included"],"leer":["to read","read","reads","read"],"creer":["to believe","believe","believes","believed"],"poseer":["to possess","possess","possesses","possessed"],"proveer":["to provide","provide","provides","provided"],"enviar":["to send","send","sends","sent"],"confiar":["to trust","trust","trusts","trusted"],"actuar":["to act","act","acts","acted"],"continuar":["to continue","continue","continues","continued"],"hacer":["to do, to make","do","does","did"],"decir":["to say, to tell","say","says","said"],"dar":["to give","give","gives","gave"],"ver":["to see","see","sees","saw"],"saber":["to know (facts)","know","knows","knew"],"caer":["to fall","fall","falls","fell"],"traer":["to bring","bring","brings","brought"],"oír":["to hear","hear","hears","heard"],"andar":["to walk","walk","walks","walked"],"poner":["to put","put","puts","put"],"salir":["to leave","leave","leaves","left"],"caber":["to fit","fit","fits","fit"]};
+const VERB_EN={"hablar":["to speak","speak","speaks","spoke","v:ar"],"caminar":["to walk","walk","walks","walked","v:ar"],"trabajar":["to work","work","works","worked","v:ar"],"comprar":["to buy","buy","buys","bought","v:ar"],"estudiar":["to study","study","studies","studied","v:ar"],"escuchar":["to listen","listen","listens","listened","v:ar"],"mirar":["to watch","watch","watches","watched","v:ar"],"comer":["to eat","eat","eats","ate","v:er"],"beber":["to drink","drink","drinks","drank","v:er"],"aprender":["to learn","learn","learns","learned","v:er"],"correr":["to run","run","runs","ran","v:er"],"vender":["to sell","sell","sells","sold","v:er"],"responder":["to answer","answer","answers","answered","v:er"],"prometer":["to promise","promise","promises","promised","v:er"],"vivir":["to live","live","lives","lived","v:ir"],"decidir":["to decide","decide","decides","decided","v:ir"],"subir":["to go up","climb","climbs","climbed","v:ir"],"recibir":["to receive","receive","receives","received","v:ir"],"abrir":["to open","open","opens","opened","v:ir:irreg_pp:abierto"],"compartir":["to share","share","shares","shared","v:ir"],"pensar":["to think","think","thinks","thought","v:ar:stem1:e>ie"],"contar":["to count, to tell","count","counts","counted","v:ar:stem1:o>ue"],"cerrar":["to close","close","closes","closed","v:ar:stem1:e>ie"],"volver":["to return","return","returns","returned","v:er:stem1:o>ue:irreg_pp:vuelto"],"encontrar":["to find","find","finds","found","v:ar:stem1:o>ue"],"entender":["to understand","understand","understands","understood","v:er:stem1:e>ie"],"recordar":["to remember","remember","remembers","remembered","v:ar:stem1:o>ue"],"querer":["to want","want","wants","wanted","v:er:stem1:e>ie:irreg_pret:quis:irreg_fut:querr"],"sentir":["to feel","feel","feels","felt","v:ir:stem2:e>ie"],"dormir":["to sleep","sleep","sleeps","slept","v:ir:stem2:o>ue"],"mentir":["to lie","lie","lies","lied","v:ir:stem2:e>ie"],"morir":["to die","die","dies","died","v:ir:stem2:o>ue:irreg_pp:muerto"],"advertir":["to warn","warn","warns","warned","v:ir:stem2:e>ie"],"convertir":["to convert","convert","converts","converted","v:ir:stem2:e>ie"],"pedir":["to ask for","ask for","asks for","asked for","v:ir:stem3:e>i"],"servir":["to serve","serve","serves","served","v:ir:stem3:e>i"],"repetir":["to repeat","repeat","repeats","repeated","v:ir:stem3:e>i"],"medir":["to measure","measure","measures","measured","v:ir:stem3:e>i"],"vestir":["to dress","dress","dresses","dressed","v:ir:stem3:e>i"],"buscar":["to search","search","searches","searched","v:ar:orth:car"],"llegar":["to arrive","arrive","arrives","arrived","v:ar:orth:gar"],"cruzar":["to cross","cross","crosses","crossed","v:ar:orth:zar"],"tocar":["to touch, to play","play","plays","played","v:ar:orth:car"],"pagar":["to pay","pay","pays","paid","v:ar:orth:gar"],"empezar":["to begin","begin","begins","began","v:ar:stem1:e>ie:orth:zar"],"conocer":["to know, to meet","know","knows","knew","v:er:orth:zc"],"vencer":["to defeat","defeat","defeats","defeated","v:er:orth:z"],"recoger":["to pick up","pick up","picks up","picked up","v:er:orth:ger"],"escoger":["to choose","choose","chooses","chose","v:er:orth:ger"],"dirigir":["to direct","direct","directs","directed","v:ir:orth:gir"],"exigir":["to demand","demand","demands","demanded","v:ir:orth:gir"],"distinguir":["to distinguish","distinguish","distinguishes","distinguished","v:ir:orth:guir"],"seguir":["to follow","follow","follows","followed","v:ir:stem3:e>i:orth:guir"],"traducir":["to translate","translate","translates","translated","v:ir:orth:zc:irreg_pret:traduj"],"producir":["to produce","produce","produces","produced","v:ir:orth:zc:irreg_pret:produj"],"conducir":["to drive","drive","drives","drove","v:ir:orth:zc:irreg_pret:conduj"],"construir":["to build","build","builds","built","v:ir:orth:uir"],"destruir":["to destroy","destroy","destroys","destroyed","v:ir:orth:uir"],"incluir":["to include","include","includes","included","v:ir:orth:uir"],"leer":["to read","read","reads","read","v:er:orth:eer"],"creer":["to believe","believe","believes","believed","v:er:orth:eer"],"poseer":["to possess","possess","possesses","possessed","v:er:orth:eer"],"proveer":["to provide","provide","provides","provided","v:er:orth:eer"],"enviar":["to send","send","sends","sent","v:ar:orth:iar"],"confiar":["to trust","trust","trusts","trusted","v:ar:orth:iar"],"actuar":["to act","act","acts","acted","v:ar:orth:uar"],"continuar":["to continue","continue","continues","continued","v:ar:orth:uar"],"hacer":["to do, to make","do","does","did","v:er:go:go_stem:hag:irreg_pret:hic:irreg_fut:har:irreg_pp:hecho"],"decir":["to say, to tell","say","says","said","v:ir:stem2:e>i:go_stem:dig:irreg_pret:dij:irreg_fut:dir:irreg_pp:dicho:irreg_ger:diciendo"],"dar":["to give","give","gives","gave","v:ar:irreg:dar"],"ver":["to see","see","sees","saw","v:er:irreg:ver"],"saber":["to know (facts)","know","knows","knew","v:er:irreg:saber"],"caer":["to fall","fall","falls","fell","v:er:irreg:caer"],"traer":["to bring","bring","brings","brought","v:er:irreg:traer"],"oír":["to hear","hear","hears","heard","v:ir:irreg:oír"],"andar":["to walk","walk","walks","walked","v:ar:irreg:andar"],"poner":["to put","put","puts","put","v:er:go:irreg_pret:pus:irreg_fut:pondr:irreg_pp:puesto"],"salir":["to leave","leave","leaves","left","v:ir:go:irreg_fut:saldr"],"caber":["to fit","fit","fits","fit","v:er:irreg:caber"]};
+// === conjugation engine, extracted verbatim from conjuga.html ===
+const CONJ_PRESENT = { ar:["o","as","a","amos","áis","an"], er:["o","es","e","emos","éis","en"], ir:["o","es","e","imos","ís","en"] };
+const CONJ_PRETERITE = { ar:["é","aste","ó","amos","asteis","aron"], er:["í","iste","ió","imos","isteis","ieron"], ir:["í","iste","ió","imos","isteis","ieron"] };
+const CONJ_IMPERFECT = { ar:["aba","abas","aba","ábamos","abais","aban"], er:["ía","ías","ía","íamos","íais","ían"], ir:["ía","ías","ía","íamos","íais","ían"] };
+const CONJ_FUTURE_END = ["é","ás","á","emos","éis","án"];
+const CONJ_COND_END = ["ía","ías","ía","íamos","íais","ían"];
+const CONJ_PRES_SUBJ = { ar:["e","es","e","emos","éis","en"], er:["a","as","a","amos","áis","an"], ir:["a","as","a","amos","áis","an"] };
+const CONJ_IMPERF_SUBJ_RA = ["ra","ras","ra","ramos","rais","ran"];
+const CONJ_IRREG_PRET_END = ["e","iste","o","imos","isteis","ieron"];
+const CONJ_IRREG_PRET_END_J = ["e","iste","o","imos","isteis","eron"];
+const CONJ_STRESSED = [true,true,true,false,false,true];
+
+const CONJ_FULLY_IRREG = {
+    ser: { present:["soy","eres","es","somos","sois","son"], preterite:["fui","fuiste","fue","fuimos","fuisteis","fueron"], imperfect:["era","eras","era","éramos","erais","eran"], future:["seré","serás","será","seremos","seréis","serán"], conditional:["sería","serías","sería","seríamos","seríais","serían"], present_subj:["sea","seas","sea","seamos","seáis","sean"], imperf_subj_ra:["fuera","fueras","fuera","fuéramos","fuerais","fueran"], gerund:"siendo", pp:"sido", imperative_aff:["sé","sea","seamos","sed","sean"] },
+    ir: { present:["voy","vas","va","vamos","vais","van"], preterite:["fui","fuiste","fue","fuimos","fuisteis","fueron"], imperfect:["iba","ibas","iba","íbamos","ibais","iban"], future:["iré","irás","irá","iremos","iréis","irán"], conditional:["iría","irías","iría","iríamos","iríais","irían"], present_subj:["vaya","vayas","vaya","vayamos","vayáis","vayan"], imperf_subj_ra:["fuera","fueras","fuera","fuéramos","fuerais","fueran"], gerund:"yendo", pp:"ido", imperative_aff:["ve","vaya","vayamos","id","vayan"] },
+    haber: { present:["he","has","ha","hemos","habéis","han"], preterite:["hube","hubiste","hubo","hubimos","hubisteis","hubieron"], imperfect:["había","habías","había","habíamos","habíais","habían"], future:["habré","habrás","habrá","habremos","habréis","habrán"], conditional:["habría","habrías","habría","habríamos","habríais","habrían"], present_subj:["haya","hayas","haya","hayamos","hayáis","hayan"], imperf_subj_ra:["hubiera","hubieras","hubiera","hubiéramos","hubierais","hubieran"], gerund:"habiendo", pp:"habido", imperative_aff:["he","haya","hayamos","habed","hayan"] },
+    dar: { present:["doy","das","da","damos","dais","dan"], preterite:["di","diste","dio","dimos","disteis","dieron"], imperfect:["daba","dabas","daba","dábamos","dabais","daban"], future:["daré","darás","dará","daremos","daréis","darán"], conditional:["daría","darías","daría","daríamos","daríais","darían"], present_subj:["dé","des","dé","demos","deis","den"], imperf_subj_ra:["diera","dieras","diera","diéramos","dierais","dieran"], gerund:"dando", pp:"dado", imperative_aff:["da","dé","demos","dad","den"] },
+    ver: { present:["veo","ves","ve","vemos","veis","ven"], preterite:["vi","viste","vio","vimos","visteis","vieron"], imperfect:["veía","veías","veía","veíamos","veíais","veían"], future:["veré","verás","verá","veremos","veréis","verán"], conditional:["vería","verías","vería","veríamos","veríais","verían"], present_subj:["vea","veas","vea","veamos","veáis","vean"], imperf_subj_ra:["viera","vieras","viera","viéramos","vierais","vieran"], gerund:"viendo", pp:"visto", imperative_aff:["ve","vea","veamos","ved","vean"] },
+    estar: { present:["estoy","estás","está","estamos","estáis","están"], preterite:["estuve","estuviste","estuvo","estuvimos","estuvisteis","estuvieron"], imperfect:["estaba","estabas","estaba","estábamos","estabais","estaban"], future:["estaré","estarás","estará","estaremos","estaréis","estarán"], conditional:["estaría","estarías","estaría","estaríamos","estaríais","estarían"], present_subj:["esté","estés","esté","estemos","estéis","estén"], imperf_subj_ra:["estuviera","estuvieras","estuviera","estuviéramos","estuvierais","estuvieran"], gerund:"estando", pp:"estado", imperative_aff:["está","esté","estemos","estad","estén"] },
+    saber: { present:["sé","sabes","sabe","sabemos","sabéis","saben"], preterite:["supe","supiste","supo","supimos","supisteis","supieron"], imperfect:["sabía","sabías","sabía","sabíamos","sabíais","sabían"], future:["sabré","sabrás","sabrá","sabremos","sabréis","sabrán"], conditional:["sabría","sabrías","sabría","sabríamos","sabríais","sabrían"], present_subj:["sepa","sepas","sepa","sepamos","sepáis","sepan"], imperf_subj_ra:["supiera","supieras","supiera","supiéramos","supierais","supieran"], gerund:"sabiendo", pp:"sabido", imperative_aff:["sabe","sepa","sepamos","sabed","sepan"] },
+    caer: { present:["caigo","caes","cae","caemos","caéis","caen"], preterite:["caí","caíste","cayó","caímos","caísteis","cayeron"], imperfect:["caía","caías","caía","caíamos","caíais","caían"], future:["caeré","caerás","caerá","caeremos","caeréis","caerán"], conditional:["caería","caerías","caería","caeríamos","caeríais","caerían"], present_subj:["caiga","caigas","caiga","caigamos","caigáis","caigan"], imperf_subj_ra:["cayera","cayeras","cayera","cayéramos","cayerais","cayeran"], gerund:"cayendo", pp:"caído", imperative_aff:["cae","caiga","caigamos","caed","caigan"] },
+    traer: { present:["traigo","traes","trae","traemos","traéis","traen"], preterite:["traje","trajiste","trajo","trajimos","trajisteis","trajeron"], imperfect:["traía","traías","traía","traíamos","traíais","traían"], future:["traeré","traerás","traerá","traeremos","traeréis","traerán"], conditional:["traería","traerías","traería","traeríamos","traeríais","traerían"], present_subj:["traiga","traigas","traiga","traigamos","traigáis","traigan"], imperf_subj_ra:["trajera","trajeras","trajera","trajéramos","trajerais","trajeran"], gerund:"trayendo", pp:"traído", imperative_aff:["trae","traiga","traigamos","traed","traigan"] },
+    "oír": { present:["oigo","oyes","oye","oímos","oís","oyen"], preterite:["oí","oíste","oyó","oímos","oísteis","oyeron"], imperfect:["oía","oías","oía","oíamos","oíais","oían"], future:["oiré","oirás","oirá","oiremos","oiréis","oirán"], conditional:["oiría","oirías","oiría","oiríamos","oiríais","oirían"], present_subj:["oiga","oigas","oiga","oigamos","oigáis","oigan"], imperf_subj_ra:["oyera","oyeras","oyera","oyéramos","oyerais","oyeran"], gerund:"oyendo", pp:"oído", imperative_aff:["oye","oiga","oigamos","oíd","oigan"] },
+    poder: { present:["puedo","puedes","puede","podemos","podéis","pueden"], preterite:["pude","pudiste","pudo","pudimos","pudisteis","pudieron"], imperfect:["podía","podías","podía","podíamos","podíais","podían"], future:["podré","podrás","podrá","podremos","podréis","podrán"], conditional:["podría","podrías","podría","podríamos","podríais","podrían"], present_subj:["pueda","puedas","pueda","podamos","podáis","puedan"], imperf_subj_ra:["pudiera","pudieras","pudiera","pudiéramos","pudierais","pudieran"], gerund:"pudiendo", pp:"podido", imperative_aff:["puede","pueda","podamos","poded","puedan"] },
+    caber: { present:["quepo","cabes","cabe","cabemos","cabéis","caben"], preterite:["cupe","cupiste","cupo","cupimos","cupisteis","cupieron"], imperfect:["cabía","cabías","cabía","cabíamos","cabíais","cabían"], future:["cabré","cabrás","cabrá","cabremos","cabréis","cabrán"], conditional:["cabría","cabrías","cabría","cabríamos","cabríais","cabrían"], present_subj:["quepa","quepas","quepa","quepamos","quepáis","quepan"], imperf_subj_ra:["cupiera","cupieras","cupiera","cupiéramos","cupierais","cupieran"], gerund:"cabiendo", pp:"cabido", imperative_aff:["cabe","quepa","quepamos","cabed","quepan"] },
+    valer: { present:["valgo","vales","vale","valemos","valéis","valen"], preterite:["valí","valiste","valió","valimos","valisteis","valieron"], imperfect:["valía","valías","valía","valíamos","valíais","valían"], future:["valdré","valdrás","valdrá","valdremos","valdréis","valdrán"], conditional:["valdría","valdrías","valdría","valdríamos","valdríais","valdrían"], present_subj:["valga","valgas","valga","valgamos","valgáis","valgan"], imperf_subj_ra:["valiera","valieras","valiera","valiéramos","valierais","valieran"], gerund:"valiendo", pp:"valido", imperative_aff:["vale","valga","valgamos","valed","valgan"] },
+    andar: { present:["ando","andas","anda","andamos","andáis","andan"], preterite:["anduve","anduviste","anduvo","anduvimos","anduvisteis","anduvieron"], imperfect:["andaba","andabas","andaba","andábamos","andabais","andaban"], future:["andaré","andarás","andará","andaremos","andaréis","andarán"], conditional:["andaría","andarías","andaría","andaríamos","andaríais","andarían"], present_subj:["ande","andes","ande","andemos","andéis","anden"], imperf_subj_ra:["anduviera","anduvieras","anduviera","anduviéramos","anduvierais","anduvieran"], gerund:"andando", pp:"andado", imperative_aff:["anda","ande","andemos","andad","anden"] }
+};
+
+const CONJ_IRREG_TU_IMP = { tener:"ten", venir:"ven", poner:"pon", salir:"sal", hacer:"haz", decir:"di", saber:"sé", valer:"val" };
+
+function conjApplyStemChange(stem, change) {
+    const [src, dst] = change.split(">"); const idx = stem.lastIndexOf(src);
+    if (idx === -1) return stem; return stem.slice(0, idx) + dst + stem.slice(idx + src.length);
+}
+function conjReducedChange(change) { const [src, dst] = change.split(">"); return src + ">" + dst[0]; }
+function conjApplyOrth(stem, orth) {
+    if (orth === "car" && stem.endsWith("c")) return stem.slice(0,-1) + "qu";
+    if (orth === "gar" && stem.endsWith("g")) return stem.slice(0,-1) + "gu";
+    if (orth === "zar" && stem.endsWith("z")) return stem.slice(0,-1) + "c";
+    if (orth === "ger" && stem.endsWith("g")) return stem.slice(0,-1) + "j";
+    if (orth === "gir" && stem.endsWith("g")) return stem.slice(0,-1) + "j";
+    if (orth === "guir" && stem.endsWith("gu")) return stem.slice(0,-2) + "g";
+    if (orth === "zc" && stem.endsWith("c")) return stem.slice(0,-1) + "zc";
+    if (orth === "z" && stem.endsWith("c")) return stem.slice(0,-1) + "z";
+    if (orth === "uir") return stem + "y"; return stem;
+}
+
+class ConjVerb {
+    constructor(infinitive, tagStr) {
+        this.infinitive = infinitive.toLowerCase().trim();
+        this.reflexive = this.infinitive.endsWith("se");
+        if (this.reflexive) this.infinitive = this.infinitive.slice(0,-2);
+        this.tags = this._parseTags(tagStr || "");
+        this.group = this.tags.group || (this.infinitive.endsWith("ar") ? "ar" : this.infinitive.endsWith("er") ? "er" : "ir");
+        this.stem = this.infinitive.slice(0,-2);
+    }
+    _parseTags(s) {
+        const t = {};
+        if (!s) { t.group = this.infinitive.endsWith("ar") ? "ar" : this.infinitive.endsWith("er") ? "er" : "ir"; return t; }
+        const p = s.trim().replace(/\s+/g, ':').split(":");
+        if (!p.length || p[0] !== "v") { t.group = this.infinitive.endsWith("ar") ? "ar" : this.infinitive.endsWith("er") ? "er" : "ir"; return t; }
+        let i = 1;
+        if (i < p.length && ["ar","er","ir"].includes(p[i])) { t.group = p[i]; i++; }
+        while (i < p.length) {
+            const k = p[i];
+            if (k.startsWith("stem") && i+1 < p.length) { t[k] = p[i+1]; i += 2; }
+            else if (k === "orth" && i+1 < p.length) { t.orth = p[i+1]; i += 2; }
+            else if (k === "go") { t.go = true; i++; }
+            else if (k === "go_stem" && i+1 < p.length) { t.go_stem = p[i+1]; i += 2; }
+            else if (k === "irreg_pret" && i+1 < p.length) { t.irreg_pret = p[i+1]; i += 2; }
+            else if (k === "irreg_fut" && i+1 < p.length) { t.irreg_fut = p[i+1]; i += 2; }
+            else if (k === "irreg_pp" && i+1 < p.length) { t.irreg_pp = p[i+1]; i += 2; }
+            else if (k === "irreg_ger" && i+1 < p.length) { t.irreg_ger = p[i+1]; i += 2; }
+            else if (k === "irreg" && i+1 < p.length) { t.irreg = p[i+1]; i += 2; }
+            else i++;
+        }
+        if (!t.group) t.group = this.infinitive.endsWith("ar") ? "ar" : this.infinitive.endsWith("er") ? "er" : "ir";
+        return t;
+    }
+    _goStem() { return this.tags.go_stem || (this.stem + "g"); }
+    _stemPresent(pos) { let s = this.stem; if (!CONJ_STRESSED[pos]) return s; for (const k of ["stem1","stem2","stem3"]) { const c = this.tags[k]; if (c) s = conjApplyStemChange(s, c); } return s; }
+    _stemPresSubj(pos) {
+        if (this.tags.go || this.tags.go_stem) return this._goStem(); let s = this.stem;
+        for (const k of ["stem1","stem2","stem3"]) { const c = this.tags[k]; if (!c) continue;
+            if (k === "stem1") { if (CONJ_STRESSED[pos]) s = conjApplyStemChange(s, c); }
+            else if (k === "stem2") { s = conjApplyStemChange(s, CONJ_STRESSED[pos] ? c : conjReducedChange(c)); }
+            else if (k === "stem3") { s = conjApplyStemChange(s, c); }
+        } return s;
+    }
+    _stemPret(pos) { let s = this.stem; for (const k of ["stem2","stem3"]) { const c = this.tags[k]; if (c && (pos === 2 || pos === 5)) s = conjApplyStemChange(s, conjReducedChange(c)); } return s; }
+    _stemGerund() { let s = this.stem; for (const k of ["stem2","stem3"]) { const c = this.tags[k]; if (c) s = conjApplyStemChange(s, conjReducedChange(c)); } return s; }
+    _orthStem(stem, ending) {
+        const orth = this.tags.orth; if (!orth) return stem;
+        let fv = ""; for (const c of ending) { if ("aeiouáéíóú".includes(c)) { fv = c; break; } }
+        if (orth === "uir") return (fv && !"ií".includes(fv)) ? conjApplyOrth(stem, orth) : stem;
+        if (orth === "iar" || orth === "uar") return stem;
+        if (["car","gar","zar"].includes(orth) && "eé".includes(fv)) return conjApplyOrth(stem, orth);
+        if (["ger","gir","guir","zc","z"].includes(orth) && "aoáó".includes(fv)) return conjApplyOrth(stem, orth);
+        return stem;
+    }
+    presentIndicative() {
+        if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].present;
+        const ends = CONJ_PRESENT[this.group]; const forms = [];
+        for (let i = 0; i < 6; i++) { let s = this._stemPresent(i);
+            if ((this.tags.go || this.tags.go_stem) && i === 0) { forms.push(this._goStem() + "o"); continue; }
+            const orth = this.tags.orth;
+            if (orth === "iar" && CONJ_STRESSED[i]) { if (s.endsWith("i")) s = s.slice(0,-1) + "í"; forms.push(s + ends[i]); continue; }
+            if (orth === "uar" && CONJ_STRESSED[i]) { if (s.endsWith("u")) s = s.slice(0,-1) + "ú"; forms.push(s + ends[i]); continue; }
+            s = this._orthStem(s, ends[i]); forms.push(s + ends[i]); } return forms;
+    }
+    preterite() {
+        if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].preterite;
+        const iStem = this.tags.irreg_pret;
+        if (iStem) { const ends = iStem.endsWith("j") ? CONJ_IRREG_PRET_END_J : CONJ_IRREG_PRET_END;
+            return ends.map((e,i) => { let s = iStem; if (s.endsWith("c") && e.startsWith("o")) s = s.slice(0,-1)+"z"; return s+e; }); }
+        const ends = CONJ_PRETERITE[this.group]; const forms = [];
+        for (let i = 0; i < 6; i++) { let s = this._stemPret(i); const orth = this.tags.orth;
+            if (orth && i === 0 && this.group === "ar") s = this._orthStem(s, ends[i]);
+            if (["eer","uir"].includes(orth) && (i === 2 || i === 5)) { forms.push(s + (i === 2 ? "yó" : "yeron")); continue; }
+            if (orth === "eer" && (i === 1 || i === 3 || i === 4)) { forms.push(s + "í" + ends[i].slice(1)); continue; }
+            forms.push(s + ends[i]); } return forms;
+    }
+    imperfect() { if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].imperfect; return CONJ_IMPERFECT[this.group].map(e => this.stem + e); }
+    future() { if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].future; return CONJ_FUTURE_END.map(e => (this.tags.irreg_fut || this.infinitive) + e); }
+    conditional() { if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].conditional; return CONJ_COND_END.map(e => (this.tags.irreg_fut || this.infinitive) + e); }
+    presentSubjunctive() {
+        if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].present_subj;
+        const ends = CONJ_PRES_SUBJ[this.group]; const forms = [];
+        for (let i = 0; i < 6; i++) { let s = this._stemPresSubj(i); s = this._orthStem(s, ends[i]);
+            const orth = this.tags.orth;
+            if (orth === "iar" && CONJ_STRESSED[i] && s.endsWith("i")) s = s.slice(0,-1) + "í";
+            if (orth === "uar" && CONJ_STRESSED[i] && s.endsWith("u")) s = s.slice(0,-1) + "ú";
+            forms.push(s + ends[i]); } return forms;
+    }
+    imperfectSubjunctiveRa() {
+        if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].imperf_subj_ra;
+        const pret = this.preterite(); const base = pret[5].slice(0, -3);
+        const acc = {a:"á",e:"é",i:"í",o:"ó",u:"ú"};
+        return CONJ_IMPERF_SUBJ_RA.map((e,i) => {
+            if (i === 3) { const chars = [...base]; for (let j = chars.length-1; j >= 0; j--) { if (acc[chars[j]]) { chars[j] = acc[chars[j]]; break; } } return chars.join("") + e; }
+            return base + e; });
+    }
+    gerund() { if (this.tags.irreg_ger) return this.tags.irreg_ger; if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].gerund || (this.stem + (this.group === "ar" ? "ando" : "iendo")); const s = this._stemGerund(); if (["uir","eer"].includes(this.tags.orth)) return s + "yendo"; return s + (this.group === "ar" ? "ando" : "iendo"); }
+    pastParticiple() { if (this.tags.irreg_pp) return this.tags.irreg_pp; if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].pp || (this.stem + (this.group === "ar" ? "ado" : "ido")); if (this.tags.orth === "eer") return this.stem + "ído"; return this.stem + (this.group === "ar" ? "ado" : "ido"); }
+    imperativeAff() { if (this.tags.irreg) return CONJ_FULLY_IRREG[this.tags.irreg].imperative_aff || ["?","?","?","?","?"]; const pres = this.presentIndicative(); const subj = this.presentSubjunctive(); let tu = pres[2]; if (CONJ_IRREG_TU_IMP[this.infinitive]) tu = CONJ_IRREG_TU_IMP[this.infinitive]; return [tu, subj[2], subj[3], this.infinitive.slice(0,-1)+"d", subj[5]]; }
+    imperativeNeg() { return this.presentSubjunctive(); }
+    conjugateAll() { return { present: this.presentIndicative(), preterite: this.preterite(), imperfect: this.imperfect(), future: this.future(), conditional: this.conditional(), present_subjunctive: this.presentSubjunctive(), imperfect_subjunctive_ra: this.imperfectSubjunctiveRa(), gerund: this.gerund(), past_participle: this.pastParticiple(), imperative_aff: this.imperativeAff(), imperative_neg: this.imperativeNeg() }; }
+}
+
 const KINDC={power:'#8E5A9E', redeem:'#B8762C', square:'#2E6E8E', ivl:'#3A7A56', ivlInf:'#6FAE8B', intro:'#C9A44A', round:'#5B8DB0', maint:'#8a8a8a', other:'#8a8a8a'};
 function kindOf(e) {
   if(e.k==='power') return 'power';
@@ -336,6 +486,18 @@ function histStripHtml(cur) {
   });
   return '<div class="dev-hist">cell '+hist.length+': '+out+'</div>';
 }
+function expectedForm(e) {
+  try {
+    const d=VERB_EN[e.v];
+    if(!d || !d[4]) return null;
+    if(e.tn==='infinitive') return e.v;
+    const all=new ConjVerb(e.v, d[4]).conjugateAll();
+    const arr=all[e.tn];
+    if(!arr) return null;
+    const f=arr[e.p==null?0:e.p];
+    return f || null;
+  } catch(err) { return null; }
+}
 function englishFor(e) {
   const d=VERB_EN[e.v];
   if(e.tn==='infinitive') return d ? d[0] : ('('+e.v+')');
@@ -380,8 +542,10 @@ function render(revealed) {
        '<span class="tbar"><span class="tfill" id="tfill"></span></span></div>';
     h+='<div class="p-actions"><span class="pbtn">Correct</span><span class="pbtn">Wrong ✗</span></div>';
   } else {
+    const expF = e.r===1 ? (e.w||expectedForm(e)||e.v) : (expectedForm(e)||e.v);
     h+='<div class="drill-answer revealed"><div>'+
-       '<div class="drill-spanish '+(e.r===1?'ok':'bad')+'">'+esc(e.r===1&&e.w?e.w:e.v)+'</div>'+
+       '<div class="drill-spanish '+(e.r===1?'ok':'bad')+'">'+esc(expF)+'</div>'+
+       (e.tn!=='infinitive' && expF!==e.v ? '<div class="pmeta" style="margin-top:2px">'+esc(e.v)+'</div>' : '')+
        (e.w && e.r!==1 ? '<div class="pwrote">wrote: '+esc(e.w)+'</div>' : '')+
        '</div></div>';
     h+='<div class="p-actions"><span class="pbtn'+(e.r===1?' hit-ok':'')+'">Correct</span><span class="pbtn'+(e.r!==1?' hit-bad':'')+'">Wrong ✗</span></div>';
