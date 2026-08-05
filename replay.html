@@ -102,6 +102,19 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 .tab.cur { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
 .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .gsub { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5; }
+.vpick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.vchipb { font-size: 0.78rem; padding: 3px 10px; border-radius: 13px; border: 1px solid var(--border); background: var(--surface); color: var(--text-secondary); cursor: pointer; font-family: inherit; }
+.vchipb:hover { border-color: var(--accent); }
+.vchipb.on { color: var(--accent-text); font-weight: 600; }
+.vchipb small { opacity: 0.7; font-size: 0.9em; margin-left: 4px; }
+#verbCanvas { width: 100%; display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.vtable { margin-top: 12px; overflow-x: auto; }
+.vtable table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
+.vtable th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); }
+.vtable td { padding: 5px 8px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.vtable td.vname { font-weight: 600; }
+.vtable td.good { color: var(--good); }
+.vtable td.bad { color: var(--bad); }
 .stairs { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
 .stair { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 10px; cursor: pointer; }
 .stair:hover { border-color: var(--accent); }
@@ -118,7 +131,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp15</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp16</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -141,6 +154,26 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
   <div class="tabbar">
     <button class="tab cur" id="tabReplay">Replay</button>
     <button class="tab" id="tabGraphs">Graphs</button>
+    <button class="tab" id="tabVerbs">Verbs</button>
+  </div>
+  <div id="verbsView" class="hidden">
+    <div class="controls">
+      <div>
+        <label for="vY">Y-axis</label>
+        <select id="vY">
+          <option value="goal" selected>vs 90% goal</option>
+          <option value="climb">Total climb</option>
+        </select>
+      </div>
+      <label class="chk"><input type="checkbox" id="vPower"> include power practice</label>
+      <button class="ctl" id="vNewest">newest 4</button>
+      <button class="ctl" id="vClear">clear</button>
+    </div>
+    <div class="gsub">Each verb's line starts where it first appears in your whole practice history (x = attempt number overall), so a newcomer's curve begins mid-chart and you can watch how fast it catches the veterans. <b>vs 90% goal</b>: flat = holding 90%, rising = better, sagging = harder than target. Click verbs to compare.</div>
+    <div class="vpick" id="vPick"></div>
+    <canvas id="verbCanvas" height="360"></canvas>
+    <div class="plegend" id="vLegend"></div>
+    <div class="vtable" id="vTable"></div>
   </div>
   <div id="replayView">
   <div class="controls">
@@ -553,11 +586,131 @@ document.getElementById('ghPw').addEventListener('keydown', ev=>{ if(ev.key==='E
 /* ---------- graphs: per-tense staircases ---------- */
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function showView(which) {
-  document.getElementById('replayView').classList.toggle('hidden', which!=='replay');
-  document.getElementById('graphsView').classList.toggle('hidden', which!=='graphs');
-  document.getElementById('tabReplay').classList.toggle('cur', which==='replay');
-  document.getElementById('tabGraphs').classList.toggle('cur', which==='graphs');
+  [['replay','replayView','tabReplay'],['graphs','graphsView','tabGraphs'],['verbs','verbsView','tabVerbs']].forEach(([k,v,t])=>{
+    document.getElementById(v).classList.toggle('hidden', which!==k);
+    document.getElementById(t).classList.toggle('cur', which===k);
+  });
   if(which==='graphs') { populateScope(); renderGraphs(); }
+  if(which==='verbs') { populateVerbs(); renderVerbs(); }
+}
+
+/* ---------- verb transfer view ---------- */
+const VERB_COLORS=['#C9A44A','#3A7A56','#C0392B','#2E6E8E','#8E5A9E','#B8762C','#4E9A8F','#A0522D'];
+let selVerbs=[], verbsAuto=true;
+function newestVerbs(n) {
+  const {map}=verbIndex();
+  return Object.values(map).sort((a,b)=>a.first-b.first).slice(-n).map(v=>v.verb);
+}
+function verbData() {
+  const withPower=document.getElementById('vPower').checked;
+  return allAttempts.filter(e=>withPower || e.k!=='power');
+}
+function verbIndex() {
+  const data=verbData();
+  const map={};
+  data.forEach((e,i)=>{
+    if(!e.v) return;
+    if(!map[e.v]) map[e.v]={verb:e.v, g:e.g, first:i, items:[]};
+    map[e.v].items.push({i:i, r:e.r});
+  });
+  return {data:data, map:map};
+}
+function populateVerbs() {
+  const {map}=verbIndex();
+  const list=Object.values(map).sort((a,b)=>a.first-b.first);
+  if(verbsAuto && !selVerbs.length) { selVerbs=list.slice(-4).map(v=>v.verb); verbsAuto=false; }   // newest arrivals by default
+  document.getElementById('vPick').innerHTML=list.map(v=>{
+    const on=selVerbs.indexOf(v.verb)!==-1;
+    const c=on ? VERB_COLORS[selVerbs.indexOf(v.verb)%VERB_COLORS.length] : '';
+    return '<button class="vchipb'+(on?' on':'')+'" style="'+(on?'background:'+c+';border-color:'+c:'')+'" data-v="'+escHtml(v.verb)+'">'+escHtml(v.verb)+'<small>'+v.items.length+'</small></button>';
+  }).join('');
+  document.getElementById('vPick').querySelectorAll('.vchipb').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const v=b.getAttribute('data-v');
+      const i=selVerbs.indexOf(v);
+      if(i===-1) { if(selVerbs.length<8) selVerbs.push(v); } else selVerbs.splice(i,1);
+      populateVerbs(); renderVerbs();
+    });
+  });
+}
+function renderVerbs() {
+  const {data, map}=verbIndex();
+  const mode=(document.getElementById('vY')||{}).value||'goal';
+  const series=selVerbs.map((v,si)=>({verb:v, color:VERB_COLORS[si%VERB_COLORS.length], rec:map[v]})).filter(s=>s.rec);
+  drawVerbChart(data.length, series, mode);
+  document.getElementById('vLegend').innerHTML=series.map(s=>{
+    const c=s.rec.items.filter(x=>x.r===1).length;
+    return '<span class="pl"><span class="sw" style="background:'+s.color+'"></span>'+escHtml(s.verb)+' '+c+'/'+s.rec.items.length+'</span>';
+  }).join('');
+  // transfer / challenge table
+  const rows=series.map(s=>{
+    const it=s.rec.items;
+    const acc=a=>a.length?Math.round(100*a.filter(x=>x.r===1).length/a.length):null;
+    const first10=acc(it.slice(0,10)), last10=acc(it.slice(-10)), all=acc(it);
+    const peers=Object.values(map).filter(m=>m.g===s.rec.g && m.verb!==s.verb);
+    const peerAcc=(()=>{ const a=[]; peers.forEach(p=>p.items.forEach(x=>{ if(x.i>=s.rec.first) a.push(x); })); return acc(a); })();
+    return {v:s.verb, first:s.rec.first+1, n:it.length, all:all, f10:first10, l10:last10, peer:peerAcc};
+  });
+  document.getElementById('vTable').innerHTML = rows.length ?
+    '<table><tr><th>verb</th><th>enters at</th><th>attempts</th><th>first 10</th><th>last 10</th><th>overall</th><th>its type meanwhile</th><th>transfer</th></tr>'+
+    rows.map(r=>{
+      const gap = (r.f10!=null && r.peer!=null) ? r.f10-r.peer : null;
+      const cls = gap==null ? '' : (gap>=-5 ? 'good' : 'bad');
+      const txt = gap==null ? '—' : (gap>=0?'+':'')+gap+' pts';
+      return '<tr><td class="vname">'+escHtml(r.v)+'</td><td>#'+r.first+'</td><td>'+r.n+'</td><td>'+(r.f10==null?'—':r.f10+'%')+
+        '</td><td>'+(r.l10==null?'—':r.l10+'%')+'</td><td>'+(r.all==null?'—':r.all+'%')+'</td><td>'+(r.peer==null?'—':r.peer+'%')+
+        '</td><td class="'+cls+'">'+txt+'</td></tr>';
+    }).join('')+'</table>'+
+    '<div class="gsub" style="margin-top:8px">“transfer” compares the verb’s first ten answers against how its own verb type performed over the same stretch — near zero or positive means the pattern carried over; a deep negative means this verb itself is the difficulty, not the tense.</div>'
+    : '<div class="gsub">pick a verb above</div>';
+}
+function drawVerbChart(total, series, mode) {
+  const cv=document.getElementById('verbCanvas');
+  if(!cv) return;
+  const W=cv.clientWidth||700, H=360;
+  const dpr=window.devicePixelRatio||1;
+  cv.width=W*dpr; cv.height=H*dpr;
+  const ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const padL=40, padR=10, padT=12, padB=20;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const border=cssVar('--border'), muted=cssVar('--text-muted'), good=cssVar('--good');
+  const vals=series.map(s=>{ let v=0; return s.rec.items.map(x=>{ v += (x.r===1)?(mode==='goal'?0.1:1):(mode==='goal'?-0.9:0); return {i:x.i, v:v}; }); });
+  let lo=0, hi=1;
+  vals.forEach(a=>a.forEach(p=>{ if(p.v<lo) lo=p.v; if(p.v>hi) hi=p.v; }));
+  const pad=Math.max(1,(hi-lo)*0.1); lo-=pad; hi+=pad;
+  const X=i=>padL+iw*(i/Math.max(1,total));
+  const Y=v=>padT+ih*(1-(v-lo)/(hi-lo));
+  ctx.font='10px -apple-system, sans-serif';
+  ctx.strokeStyle=border; ctx.lineWidth=1; ctx.strokeRect(padL,padT,iw,ih);
+  ctx.fillStyle=muted; ctx.textAlign='right';
+  ctx.fillText((mode==='goal'&&hi>0?'+':'')+hi.toFixed(0), padL-4, padT+8);
+  ctx.fillText((mode==='goal'&&lo>0?'+':'')+lo.toFixed(0), padL-4, padT+ih+4);
+  ctx.textAlign='center'; ctx.fillText('attempt 1', padL+20, H-5);
+  ctx.fillText('attempt '+total, padL+iw-26, H-5);
+  if(mode==='goal') {
+    ctx.strokeStyle=good; ctx.globalAlpha=0.8; ctx.setLineDash([6,4]); ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(padL, Y(0)); ctx.lineTo(padL+iw, Y(0)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.fillStyle=good; ctx.textAlign='left'; ctx.fillText('90% pace', padL+4, Y(0)-4);
+  }
+  series.forEach((s,si)=>{
+    const a=vals[si];
+    if(!a.length) return;
+    ctx.strokeStyle=s.color; ctx.lineWidth=1.8;
+    ctx.beginPath();
+    ctx.moveTo(X(s.rec.first), Y(0));
+    let prev=0;
+    a.forEach(p=>{ ctx.lineTo(X(p.i), Y(prev)); ctx.lineTo(X(p.i), Y(p.v)); prev=p.v; });
+    ctx.stroke();
+    // entry marker: where this verb joined the rotation
+    ctx.fillStyle=s.color;
+    ctx.beginPath(); ctx.arc(X(s.rec.first), Y(0), 3.5, 0, 7); ctx.fill();
+    ctx.globalAlpha=0.35; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(X(s.rec.first), padT); ctx.lineTo(X(s.rec.first), padT+ih); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+    ctx.beginPath(); ctx.arc(X(a[a.length-1].i), Y(prev), 3, 0, 7); ctx.fill();
+  });
 }
 function populateScope() {
   const sel=document.getElementById('gScope');
@@ -935,6 +1088,11 @@ function drawStairMulti(cvId, series, height) {
 }
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
 document.getElementById('tabGraphs').addEventListener('click', ()=>showView('graphs'));
+document.getElementById('tabVerbs').addEventListener('click', ()=>showView('verbs'));
+document.getElementById('vY').addEventListener('change', renderVerbs);
+document.getElementById('vPower').addEventListener('change', ()=>{ populateVerbs(); renderVerbs(); });
+document.getElementById('vNewest').addEventListener('click', ()=>{ selVerbs=newestVerbs(4); populateVerbs(); renderVerbs(); });
+document.getElementById('vClear').addEventListener('click', ()=>{ selVerbs=[]; verbsAuto=false; populateVerbs(); renderVerbs(); });
 document.getElementById('gScope').addEventListener('change', renderGraphs);
 document.getElementById('gAxis').addEventListener('change', renderGraphs);
 document.getElementById('gY').addEventListener('change', renderGraphs);
