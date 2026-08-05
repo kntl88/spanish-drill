@@ -118,7 +118,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp14</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp15</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -618,7 +618,7 @@ function txFor(layout) {
 }
 function fmtDay(ts) {
   const d=new Date(ts);
-  return (d.getMonth()+1)+'/'+d.getDate();
+  return d.getDate()+'.'+(d.getMonth()+1)+'.';
 }
 function renderGraphs() {
   const data=graphData();
