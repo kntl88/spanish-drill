@@ -158,8 +158,19 @@ async function ghLogin() {
   if(!user||!pw){ ghStatus('Enter username and password', true); return; }
   ghStatus('Checking…');
   let vaults;
-  try { vaults=b64json((await ghApi(GH_PUBLIC_REPO+'/contents/'+VAULT_PATH)).content); }
-  catch(e){ ghStatus('Could not load account list', true); return; }
+  try {
+    vaults=b64json((await ghApi(GH_PUBLIC_REPO+'/contents/'+VAULT_PATH)).content);
+    try { localStorage.setItem('cjVaults', JSON.stringify(vaults)); } catch(e2) {}
+  } catch(e) {
+    try { const c=localStorage.getItem('cjVaults'); if(c) vaults=JSON.parse(c); } catch(e2) {}
+    if(!vaults) {
+      const sandboxed = e instanceof TypeError;   // CSP/network block, e.g. the artifact copy
+      ghStatus(sandboxed
+        ? 'This copy cannot reach GitHub \u2014 open kntl88.github.io/spanish-drill/'+location.pathname.split('/').pop().replace(/^$/,'') +' for cloud login, or drop the file below'
+        : 'GitHub did not answer (rate limit?) \u2014 try again in a minute or drop the file below', true);
+      return;
+    }
+  }
   const entry=vaults[user];
   if(!entry||!entry.encrypted){ ghStatus('Unknown user', true); return; }
   let creds;
