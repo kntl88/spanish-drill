@@ -374,8 +374,10 @@ function resetState() {
 function applyOne() {           // advance by one answer (no DOM)
   const e = seq[pos];
   const k = cellKey(e);
-  if (!cells[k]) cells[k] = { n: 0, c: 0 };
+  if (!cells[k]) cells[k] = { n: 0, c: 0, last: [] };
   cells[k].n++; if (e.r === 1) cells[k].c++;
+  cells[k].last.push(e.r === 1 ? 1 : 0);
+  if (cells[k].last.length > 10) cells[k].last.shift();   // rolling window, as the app's level test uses
   circ.add(e.v);
   pos++;
   return e;
