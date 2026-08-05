@@ -285,7 +285,7 @@ function render(revealed) {
     h+='<div class="pans '+(e.r===1?'ok':'bad')+'">'+esc(e.v)+(e.tn!=='infinitive'&&e.w&&e.r===1?' → '+esc(e.w):'')+'</div>';
     if(e.w && e.r!==1) h+='<div class="pwrote">wrote: '+esc(e.w)+'</div>';
     h+='<div class="pans '+(e.r===1?'ok':'bad')+'" style="font-size:1.2rem">'+(e.r===1?'✓ correct':'✗ wrong')+'</div>';
-    h+='<div class="pmeta">'+(e.ms!=null?('thought '+(e.ms/1000).toFixed(1)+' s · '):'')+(e.typed?'typed':'tap-reveal')+(e.bs?(' · '+e.bs+' backspace'+(e.bs>1?'s':'')):'')+(e.due?' · star chance':'')+(e.iv!=null?' · interval item':'')+'</div>';
+    h+='<div class="pmeta">'+(e.ms!=null?('thought '+(e.ms/1000).toFixed(1)+' s · '):'')+(e.fk!=null?('first key '+(e.fk/1000).toFixed(1)+' s · '):'')+(e.ik!=null?(e.ik+' ms/key · '):'')+(e.typed?'typed':'tap-reveal')+(e.bs?(' · '+e.bs+' backspace'+(e.bs>1?'s':'')):'')+(e.due?' · star chance':'')+(e.iv!=null?' · interval item':'')+'</div>';
   }
   document.getElementById('pcard').innerHTML=h;
   const done=cur.items.slice(0, idx+(revealed?1:0));
@@ -311,7 +311,12 @@ function playStep() {
     const full=thinkMs(e,idx)||1;
     if(fl) fl.style.width=Math.min(100, 100*gone/full)+'%';
     const sim=document.getElementById('typedSim');
-    if(sim && e.w) sim.textContent=e.w.slice(0, Math.min(e.w.length, Math.floor(e.w.length*gone/full)));   // input appears proportional to time spent
+    if(sim && e.w) {
+      const start=(e.fk!=null && e.fk<full) ? e.fk : full*0.35;   // typing starts at the real first key when logged
+      const span=Math.max(200, full-start);
+      const frac=Math.max(0, Math.min(1, (gone-start)/span));
+      sim.textContent=e.w.slice(0, Math.floor(e.w.length*frac));
+    }
   }, 80);
   timer=setTimeout(()=>{
     clearInterval(tick);
