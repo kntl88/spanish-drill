@@ -132,7 +132,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp24</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp25</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -231,7 +231,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
     <div class="vpick" id="vPick"></div>
-    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them (dashed) on the tense panels — nothing else changes: same axes, same scale, same curves, the verb simply drawn on top in attempt order.
+    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them (dashed) on the tense panels — the existing curves and their scale are untouched; the verbs read on their own right-hand scale (so a 20-answer verb isn't flattened by a 300-answer tense), each dot is one real attempt, and flat stretches are spells where that verb wasn't served.
       <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
       <button class="ctl" id="vClear">clear</button>
     </div>
@@ -933,21 +933,28 @@ function drawStair(cvId, attempts, height) {
   ctx.fillStyle=accent;
   ctx.beginPath(); ctx.arc(lastX, Y(prev), 3, 0, 7); ctx.fill();
   // picked verbs: drawn on top, same axes and scale, clipped to the frame
-  ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
-  ctx.setLineDash([5,3]);
-  vsel.forEach((s,si)=>{
-    const a=vseries[si];
-    ctx.strokeStyle=s.color; ctx.lineWidth=(H>260?2.2:1.6);
-    ctx.beginPath();
-    ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0));
-    let pv=0;
-    a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Y(pv)); ctx.lineTo(x, Y(p.v)); pv=p.v; });
-    ctx.stroke();
-    ctx.fillStyle=s.color;
-    ctx.beginPath(); ctx.arc(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0), 3.2, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(timeMode ? tx(a[a.length-1].e.ts) : X(a[a.length-1].i+1), Y(pv), 3, 0, 7); ctx.fill();
-  });
-  ctx.setLineDash([]); ctx.restore();
+  if(vsel.length) {
+    const vHi=Math.max(1, ...vseries.map(a=>a.length?a[a.length-1].v:0));
+    const Yv=v=>padT+ih*(1-v/vHi);                       // verbs read on their own right-hand scale
+    ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
+    vsel.forEach((s,si)=>{
+      const a=vseries[si];
+      ctx.setLineDash([5,3]);
+      ctx.strokeStyle=s.color; ctx.lineWidth=(H>260?2.2:1.6);
+      ctx.beginPath();
+      ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Yv(0));
+      let pv=0;
+      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Yv(pv)); ctx.lineTo(x, Yv(p.v)); pv=p.v; });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle=s.color;
+      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.beginPath(); ctx.arc(x, Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });   // a dot per real attempt
+    });
+    ctx.restore();
+    ctx.fillStyle=muted; ctx.textAlign='right';
+    ctx.fillText(vHi+' ✓ verbs', padL+iw-3, padT+9);
+    ctx.fillText('0', padL+iw-3, padT+ih-2);
+  }
 }
 function drawStairMulti(cvId, attempts, series, height) {
   const cv=document.getElementById(cvId);
@@ -1029,21 +1036,29 @@ function drawStairMulti(cvId, attempts, series, height) {
     ctx.beginPath(); ctx.arc((timeMode ? tx(a[a.length-1].e.ts) : X(a[a.length-1].i+1))+off, Y(prev), 2.8, 0, 7); ctx.fill();
   });
   // picked verbs on top of the person lines: same axes and scale, clipped
-  ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
-  ctx.setLineDash([5,3]);
-  vsel.forEach((s,si)=>{
-    const a=vv[si];
-    if(!a.length) return;
-    ctx.strokeStyle=s.color; ctx.lineWidth=2.2;
-    ctx.beginPath();
-    ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0));
-    let pv=0;
-    a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Y(pv)); ctx.lineTo(x, Y(p.v)); pv=p.v; });
-    ctx.stroke();
-    ctx.fillStyle=s.color;
-    ctx.beginPath(); ctx.arc(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Y(0), 3.2, 0, 7); ctx.fill();
-  });
-  ctx.setLineDash([]); ctx.restore();
+  if(vsel.length) {
+    const vHi=Math.max(1, ...vv.map(a=>a.length?a[a.length-1].v:0));
+    const Yv=v=>padT+ih*(1-v/vHi);
+    ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
+    vsel.forEach((s,si)=>{
+      const a=vv[si];
+      if(!a.length) return;
+      ctx.setLineDash([5,3]);
+      ctx.strokeStyle=s.color; ctx.lineWidth=2.2;
+      ctx.beginPath();
+      ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Yv(0));
+      let pv=0;
+      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Yv(pv)); ctx.lineTo(x, Yv(p.v)); pv=p.v; });
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle=s.color;
+      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.beginPath(); ctx.arc(x, Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });
+    });
+    ctx.restore();
+    ctx.fillStyle=muted; ctx.textAlign='right';
+    ctx.fillText(vHi+' ✓ verbs', padL+iw-3, padT+9);
+    ctx.fillText('0', padL+iw-3, padT+ih-2);
+  }
 }
 
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
