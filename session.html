@@ -82,7 +82,7 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp11</span></small></h1>
+  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp12</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -530,7 +530,7 @@ function render(revealed) {
   else if(e.s!=null) { const big=Math.floor(e.s/3), rem=e.s%3; prog='<div class="pstars">'+'★'.repeat(big)+'✦'.repeat(rem)+'</div>'; }
   else if(e.lvl!=null) { let b=''; for(let i2=0;i2<3;i2++) b+=i2<e.lvl?'●':'○'; prog='<div class="pstars">'+b+'</div>'; }
   let h='<div class="drill-box"><div class="drill-prompt">'+
-    '<div class="drill-english">'+englishFor(e)+'</div>'+
+    '<div class="drill-english">'+(e.q?esc(e.q):englishFor(e))+'</div>'+
     '<div class="drill-tense">'+esc(TLABEL[e.tn]||e.tn)+(per?' · '+esc(per):'')+prog+(e.due?'<br>star chance':'')+
     '<br><span class="kbadge" style="background:'+(KINDC[kind]||'#888')+'">'+kind+'</span></div></div>';
   if(!revealed) {
@@ -542,7 +542,7 @@ function render(revealed) {
        '<span class="tbar"><span class="tfill" id="tfill"></span></span></div>';
     h+='<div class="p-actions"><span class="pbtn">Correct</span><span class="pbtn">Wrong ✗</span></div>';
   } else {
-    const expF = e.r===1 ? (e.w||expectedForm(e)||e.v) : (expectedForm(e)||e.v);
+    const expF = e.a ? e.a : (e.r===1 ? (e.w||expectedForm(e)||e.v) : (expectedForm(e)||e.v));
     h+='<div class="drill-answer revealed"><div>'+
        '<div class="drill-spanish '+(e.r===1?'ok':'bad')+'">'+esc(expF)+'</div>'+
        (e.tn!=='infinitive' && expF!==e.v ? '<div class="pmeta" style="margin-top:2px">'+esc(e.v)+'</div>' : '')+
