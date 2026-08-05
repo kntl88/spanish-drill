@@ -1,0 +1,331 @@
+<title>Conjuga · Session Player</title>
+<style>
+:root {
+  --bg: #F2EDE3; --surface: #FEFDFB; --surface-dim: #EAE5DA; --border: #D2C9B8;
+  --text: #2C2418; --text-secondary: #706550; --text-muted: #9C9282;
+  --accent: #96731E; --accent-text: #FFFFFF; --good: #3A7A56; --bad: #C0392B;
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#201B11; --surface:#2A2418; --surface-dim:#251F14; --border:#4A4130;
+    --text:#EDE6D4; --text-secondary:#B3A88E; --text-muted:#7E7460;
+    --accent:#C9A44A; --accent-text:#201B11; --good:#6FAE8B; --bad:#D97A6C; }
+}
+:root[data-theme="dark"] { --bg:#201B11; --surface:#2A2418; --surface-dim:#251F14; --border:#4A4130;
+  --text:#EDE6D4; --text-secondary:#B3A88E; --text-muted:#7E7460;
+  --accent:#C9A44A; --accent-text:#201B11; --good:#6FAE8B; --bad:#D97A6C; }
+:root[data-theme="light"] { --bg:#F2EDE3; --surface:#FEFDFB; --surface-dim:#EAE5DA; --border:#D2C9B8;
+  --text:#2C2418; --text-secondary:#706550; --text-muted:#9C9282;
+  --accent:#96731E; --accent-text:#FFFFFF; --good:#3A7A56; --bad:#C0392B; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-ui); margin: 0; padding: 18px clamp(12px,3vw,36px) 60px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; margin: 0; }
+h1 small { font-size: 0.85rem; color: var(--text-muted); font-family: var(--font-ui); font-weight: 400; margin-left: 8px; }
+.topbar { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+#srcStatus { font-size: 0.78rem; color: var(--text-secondary); }
+button.ctl, select { font-family: var(--font-ui); font-size: 0.85rem; background: var(--surface-dim); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 5px 10px; cursor: pointer; }
+button.ctl:hover, select:hover { border-color: var(--accent); }
+button.ctl.play { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; min-width: 78px; }
+.drop { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; color: var(--text-secondary); margin: 20px 0; }
+.drop.over { border-color: var(--accent); }
+.gh-login input { font-size: 0.88rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 6px 10px; margin: 0 4px 6px 0; font-family: var(--font-ui); }
+.userpick { display: inline-flex; gap: 6px; margin-left: 8px; }
+.userpick button.cur { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.hidden { display: none; }
+.sess-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 12px; }
+.sess { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; cursor: pointer; }
+.sess:hover { border-color: var(--accent); }
+.sess h3 { font-family: var(--font-display); font-size: 1rem; margin: 0 0 2px; }
+.sess .meta { font-size: 0.76rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
+input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
+#posLabel { font-size: 0.8rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.stagecard { max-width: 560px; margin: 0 auto; }
+.pcard { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 26px 24px; text-align: center; min-height: 240px; }
+.pcap { font-size: 0.74rem; color: var(--text-muted); }
+.kbadge { display: inline-block; font-size: 0.68rem; padding: 1px 8px; border-radius: 9px; color: #fff; margin-left: 6px; vertical-align: middle; }
+.peng { font-family: var(--font-display); font-size: 1.5rem; margin: 14px 0 4px; }
+.pthink { font-size: 0.85rem; color: var(--text-muted); margin: 18px 0; font-variant-numeric: tabular-nums; }
+.pthink .tbar { display: block; height: 4px; background: var(--surface-dim); border-radius: 3px; margin: 8px auto 0; max-width: 260px; overflow: hidden; }
+.pthink .tfill { display: block; height: 100%; background: var(--accent); width: 0; }
+.pans { font-family: var(--font-display); font-size: 1.7rem; margin: 12px 0 2px; }
+.pans.ok { color: var(--good); }
+.pans.bad { color: var(--bad); }
+.pwrote { font-size: 0.95rem; color: var(--bad); }
+.pmeta { font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; font-variant-numeric: tabular-nums; }
+.runline { text-align: center; font-size: 0.82rem; color: var(--text-secondary); margin-top: 12px; font-variant-numeric: tabular-nums; }
+.foot { font-size: 0.72rem; color: var(--text-muted); margin-top: 16px; line-height: 1.6; text-align: center; }
+</style>
+
+<div class="topbar">
+  <h1>Conjuga · Session Player<small>replays a real session, delays and all</small></h1>
+  <span id="srcStatus">no data loaded</span>
+</div>
+
+<div class="drop" id="dropZone">
+  <div class="gh-login" id="ghLogin">
+    <div style="font-weight:600; margin-bottom:8px; color:var(--text)">Load cloud data</div>
+    <input id="ghUser" type="text" placeholder="Username" autocomplete="username">
+    <input id="ghPw" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="ctl" id="ghGo">Sign in</button>
+    <div id="ghStatus" style="font-size:0.78rem; margin-top:6px; min-height:1em"></div>
+  </div>
+  <div style="margin:14px 0; font-size:0.78rem; opacity:0.7">— or —</div>
+  Drop <b>conjuga-attempts.json</b> here, or
+  <button class="ctl" onclick="document.getElementById('filePick').click()">choose a file</button>
+  <input type="file" id="filePick" accept=".json" class="hidden">
+</div>
+
+<div id="picker" class="hidden">
+  <div class="foot" style="text-align:left; margin:0 0 10px">Sessions (split at 30-minute silences) — click one to replay it:</div>
+  <div class="sess-list" id="sessList"></div>
+</div>
+
+<div id="player" class="hidden">
+  <div class="controls">
+    <button class="ctl" id="btnBack2">⏮ Sessions</button>
+    <button class="ctl play" id="btnPlay">▶ Play</button>
+    <button class="ctl" id="btnStep">›</button>
+    <select id="speedSel">
+      <option value="1">1× real time</option>
+      <option value="2" selected>2×</option>
+      <option value="5">5×</option>
+      <option value="15">15×</option>
+      <option value="0">step only</option>
+    </select>
+    <input type="range" id="scrub" min="0" value="0" step="1">
+    <span id="posLabel">0 / 0</span>
+  </div>
+  <div class="stagecard">
+    <div class="pcard" id="pcard"></div>
+    <div class="runline" id="runline"></div>
+  </div>
+  <div class="foot">The card holds for as long as the learner actually thought (logged think-time), then reveals what happened. Space = play/pause · → = step.</div>
+</div>
+
+<script>
+'use strict';
+const TLABEL={infinitive:'Infinitive', present:'Present', preterite:'Preterite', imperfect:'Imperfect',
+  future:'Future', conditional:'Conditional', imperative_aff:'Imp (+)', imperative_neg:'Imp (−)'};
+const PERSONS=['yo','tú','él/ella','nosotros','vosotros','ellos/ellas'];
+const IMPP=['tú','usted','nosotros','vosotros','ustedes'];
+const KINDC={power:'#8E5A9E', redeem:'#B8762C', square:'#2E6E8E', ivl:'#3A7A56', ivlInf:'#6FAE8B', intro:'#C9A44A', round:'#5B8DB0', maint:'#8a8a8a', other:'#8a8a8a'};
+function kindOf(e) {
+  if(e.k==='power') return 'power';
+  if(e.k && e.k.indexOf('redeem')!==-1) return 'redeem';
+  if(e.sq!=null) return 'square';
+  if(e.k==='ivl') return 'ivl';
+  if(e.k==='ivlInf') return 'ivlInf';
+  if(e.k==='intro') return 'intro';
+  if(e.k && e.k.indexOf('round')!==-1) return 'round';
+  if(e.k && e.k.indexOf('maint')===0) return 'maint';
+  return 'other';
+}
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+let sessions=[], cur=null, idx=0, phase=0, timer=null;
+
+/* ---------- loading (same vault scheme as the other tools) ---------- */
+const GH_OWNER='kntl88', GH_PUBLIC_REPO='spanish-drill', VAULT_PATH='conjuga-vaults.json';
+const SALT_LEN=16, IV_LEN=12, PBKDF2_ITER=310000;
+let gh=null;
+async function ghDeriveKey(pw, salt) {
+  const km=await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:PBKDF2_ITER, hash:'SHA-256'}, km, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+async function ghDecrypt(b64, pw) {
+  const p=Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
+  return new TextDecoder().decode(await crypto.subtle.decrypt(
+    {name:'AES-GCM', iv:p.slice(SALT_LEN, SALT_LEN+IV_LEN)},
+    await ghDeriveKey(pw, p.slice(0, SALT_LEN)), p.slice(SALT_LEN+IV_LEN)));
+}
+function ghStatus(m, err){ const el=document.getElementById('ghStatus'); el.textContent=m; el.style.color=err?'var(--bad)':'var(--text-secondary)'; }
+function b64json(c){ return JSON.parse(decodeURIComponent(escape(atob(c.replace(/\n/g,''))))); }
+async function ghApi(path, token) {
+  const res=await fetch('https://api.github.com/repos/'+GH_OWNER+'/'+path+'?t='+Date.now(), {
+    headers: Object.assign({'Accept':'application/vnd.github.v3+json','If-None-Match':''}, token?{'Authorization':'Bearer '+token}:{}), cache:'no-store'});
+  if(!res.ok) throw new Error('GitHub '+res.status);
+  return res.json();
+}
+async function ghLogin() {
+  const user=document.getElementById('ghUser').value.trim().toLowerCase();
+  const pw=document.getElementById('ghPw').value;
+  if(!user||!pw){ ghStatus('Enter username and password', true); return; }
+  ghStatus('Checking…');
+  let vaults;
+  try { vaults=b64json((await ghApi(GH_PUBLIC_REPO+'/contents/'+VAULT_PATH)).content); }
+  catch(e){ ghStatus('Could not load account list', true); return; }
+  const entry=vaults[user];
+  if(!entry||!entry.encrypted){ ghStatus('Unknown user', true); return; }
+  let creds;
+  try { creds=JSON.parse(await ghDecrypt(entry.encrypted, pw)); }
+  catch(e){ ghStatus('Wrong password', true); document.getElementById('ghPw').value=''; return; }
+  gh={token:creds.token, repo:creds.repo||'Spanish', users:[]};
+  try { const dir=await ghApi(gh.repo+'/contents/users', gh.token); gh.users=dir.filter(x=>x.type==='dir').map(x=>x.name); }
+  catch(e){ gh.users=[user]; }
+  ghLoadUser(gh.users.indexOf(user)!==-1?user:gh.users[0]);
+}
+async function ghLoadUser(name) {
+  ghStatus('Loading '+name+'…');
+  try {
+    const f=await ghApi(gh.repo+'/contents/users/'+name+'/conjuga-attempts.json', gh.token);
+    gh.current=name;
+    acceptData(b64json(f.content), 'cloud · '+name);
+    renderUserPick();
+  } catch(e){ ghStatus('Could not load '+name, true); }
+}
+function renderUserPick() {
+  if(!gh || gh.users.length<2) return;
+  const el=document.getElementById('srcStatus');
+  const pick=document.createElement('span'); pick.className='userpick';
+  gh.users.forEach(u=>{
+    const b=document.createElement('button');
+    b.className='ctl'+(u===gh.current?' cur':'');
+    b.textContent=u;
+    b.addEventListener('click', ()=>ghLoadUser(u));
+    pick.appendChild(b);
+  });
+  el.appendChild(pick);
+}
+document.getElementById('ghGo').addEventListener('click', ghLogin);
+document.getElementById('ghPw').addEventListener('keydown', e=>{ if(e.key==='Enter') ghLogin(); });
+document.getElementById('filePick').addEventListener('change', ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  f.text().then(t=>acceptData(JSON.parse(t), f.name)).catch(()=>{ document.getElementById('srcStatus').textContent='not valid JSON'; });
+});
+const dz=document.getElementById('dropZone');
+['dragover','dragenter'].forEach(x=>dz.addEventListener(x, e=>{ e.preventDefault(); dz.classList.add('over'); }));
+['dragleave','drop'].forEach(x=>dz.addEventListener(x, e=>{ e.preventDefault(); dz.classList.remove('over'); }));
+dz.addEventListener('drop', e=>{
+  const f=e.dataTransfer.files[0]; if(!f) return;
+  f.text().then(t=>acceptData(JSON.parse(t), f.name)).catch(()=>{ document.getElementById('srcStatus').textContent='not valid JSON'; });
+});
+
+/* ---------- sessions ---------- */
+function acceptData(raw, label) {
+  let arr=Array.isArray(raw)?raw:(raw&&raw.attempts);
+  if(!arr||!arr.length){ document.getElementById('srcStatus').textContent='no attempts in that file'; return; }
+  arr=arr.slice().sort((a,b)=>(a.ts||0)-(b.ts||0));
+  sessions=[];
+  let s=null;
+  arr.forEach(e=>{
+    if(!s || e.ts-s.end>30*60*1000) { s={start:e.ts, end:e.ts, items:[]}; sessions.push(s); }
+    s.items.push(e); s.end=e.ts;
+  });
+  document.getElementById('srcStatus').textContent=label+' · '+arr.length+' answers · '+sessions.length+' sessions';
+  document.getElementById('dropZone').classList.add('hidden');
+  document.getElementById('player').classList.add('hidden');
+  stop();
+  renderPicker();
+}
+function renderPicker() {
+  const el=document.getElementById('sessList');
+  el.innerHTML=sessions.map((s,i)=>{
+    const c=s.items.filter(e=>e.r===1).length;
+    const mins=Math.max(1, Math.round((s.end-s.start)/60000));
+    const d=new Date(s.start);
+    return '<div class="sess" onclick="openSession('+i+')"><h3>'+d.toLocaleDateString()+' · '+d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})+'</h3>'+
+      '<div class="meta">'+s.items.length+' answers · '+Math.round(100*c/s.items.length)+'% correct · '+mins+' min</div></div>';
+  }).reverse().join('');
+  document.getElementById('picker').classList.remove('hidden');
+}
+function openSession(i) {
+  cur=sessions[i]; idx=0; phase=0;
+  document.getElementById('picker').classList.add('hidden');
+  document.getElementById('player').classList.remove('hidden');
+  document.getElementById('scrub').max=cur.items.length-1;
+  render();
+}
+document.getElementById('btnBack2').addEventListener('click', ()=>{
+  stop();
+  document.getElementById('player').classList.add('hidden');
+  document.getElementById('picker').classList.remove('hidden');
+});
+
+/* ---------- playback: think-phase holds for the real logged delay ---------- */
+function thinkMs(e, i) {
+  if(e.ms!=null) return Math.min(e.ms, 45000);
+  const nxt=cur.items[i+1];
+  return Math.min(nxt ? Math.max(600, (nxt.ts-e.ts)*0.6) : 2500, 12000);
+}
+function gapMs(e, i) {   // reveal-to-next-card time from real timestamps
+  const nxt=cur.items[i+1];
+  if(!nxt) return 1500;
+  return Math.max(400, Math.min((nxt.ts-e.ts)-thinkMs(e,i), 15000));
+}
+function render(revealed) {
+  const e=cur.items[idx];
+  const kind=kindOf(e);
+  const per = e.tn==='infinitive'||e.p==null ? null
+    : (e.tn && e.tn.indexOf('imperative')===0 ? IMPP[e.p]||('p'+e.p) : PERSONS[e.p]||('p'+e.p));
+  let h='<div class="pcap">'+esc(TLABEL[e.tn]||e.tn)+(per?' · '+esc(per):'')+
+    '<span class="kbadge" style="background:'+(KINDC[kind]||'#888')+'">'+kind+'</span></div>';
+  if(!revealed) {
+    h+='<div class="peng">…recalling…</div>';
+    h+='<div class="pthink">thinking <span id="tclock">0.0</span> s'+
+       '<span class="tbar"><span class="tfill" id="tfill"></span></span></div>';
+  } else {
+    h+='<div class="pans '+(e.r===1?'ok':'bad')+'">'+esc(e.v)+(e.tn!=='infinitive'&&e.w&&e.r===1?' → '+esc(e.w):'')+'</div>';
+    if(e.w && e.r!==1) h+='<div class="pwrote">wrote: '+esc(e.w)+'</div>';
+    h+='<div class="pans '+(e.r===1?'ok':'bad')+'" style="font-size:1.2rem">'+(e.r===1?'✓ correct':'✗ wrong')+'</div>';
+    h+='<div class="pmeta">'+(e.ms!=null?('thought '+(e.ms/1000).toFixed(1)+' s · '):'')+(e.typed?'typed':'tap-reveal')+(e.due?' · star chance':'')+(e.iv!=null?' · interval item':'')+'</div>';
+  }
+  document.getElementById('pcard').innerHTML=h;
+  const done=cur.items.slice(0, idx+(revealed?1:0));
+  const c=done.filter(x=>x.r===1).length;
+  document.getElementById('runline').textContent=(idx+1)+' of '+cur.items.length+
+    (done.length?(' · running '+Math.round(100*c/Math.max(1,done.length))+'% correct'):'')+
+    ' · '+new Date(e.ts).toLocaleTimeString();
+  document.getElementById('scrub').value=idx;
+  document.getElementById('posLabel').textContent=(idx+1)+' / '+cur.items.length;
+}
+function speed(){ return parseFloat(document.getElementById('speedSel').value)||0; }
+function playStep() {
+  const e=cur.items[idx];
+  const sp=speed();
+  render(false);
+  const tm=thinkMs(e, idx)/(sp||1);
+  const t0=Date.now();
+  const tick=setInterval(()=>{
+    const el=document.getElementById('tclock'), fl=document.getElementById('tfill');
+    if(!el){ clearInterval(tick); return; }
+    const gone=(Date.now()-t0)*(sp||1);
+    el.textContent=(gone/1000).toFixed(1);
+    if(fl) fl.style.width=Math.min(100, 100*gone/((thinkMs(e,idx))||1))+'%';
+  }, 80);
+  timer=setTimeout(()=>{
+    clearInterval(tick);
+    render(true);
+    timer=setTimeout(()=>{
+      if(idx<cur.items.length-1){ idx++; playStep(); }
+      else stop();
+    }, gapMs(e, idx)/(sp||1));
+  }, tm);
+}
+function play() {
+  if(timer) return;
+  if(speed()===0){ step(); return; }
+  document.getElementById('btnPlay').textContent='⏸ Pause';
+  playStep();
+}
+function stop() {
+  if(timer){ clearTimeout(timer); timer=null; }
+  document.getElementById('btnPlay').textContent='▶ Play';
+}
+function step() {
+  stop();
+  render(true);
+  if(idx<cur.items.length-1){ idx++; setTimeout(()=>render(true), 0); }
+}
+document.getElementById('btnPlay').addEventListener('click', ()=>{ if(timer) stop(); else play(); });
+document.getElementById('btnStep').addEventListener('click', ()=>{ stop(); if(idx<cur.items.length-1){ idx++; } render(true); });
+document.getElementById('scrub').addEventListener('input', ev=>{ stop(); idx=+ev.target.value; render(true); });
+document.getElementById('speedSel').addEventListener('change', ()=>{ if(timer){ stop(); play(); } });
+document.addEventListener('keydown', e=>{
+  if(document.getElementById('player').classList.contains('hidden')) return;
+  if(e.key===' '){ e.preventDefault(); if(timer) stop(); else play(); }
+  else if(e.key==='ArrowRight'){ stop(); if(idx<cur.items.length-1) idx++; render(true); }
+  else if(e.key==='ArrowLeft'){ stop(); if(idx>0) idx--; render(true); }
+});
+</script>
