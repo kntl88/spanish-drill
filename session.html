@@ -41,23 +41,32 @@ button.ctl.play { background: var(--accent); color: var(--accent-text); border-c
 .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; }
 input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 #posLabel { font-size: 0.8rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.stagecard { max-width: 560px; margin: 0 auto; }
-.pcard { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 26px 24px; text-align: center; min-height: 240px; }
-.pcap { font-size: 0.74rem; color: var(--text-muted); }
-.kbadge { display: inline-block; font-size: 0.68rem; padding: 1px 8px; border-radius: 9px; color: #fff; margin-left: 6px; vertical-align: middle; }
-.peng { font-family: var(--font-display); font-size: 1.5rem; margin: 14px 0 4px; }
-.pthink { font-size: 0.85rem; color: var(--text-muted); margin: 18px 0; font-variant-numeric: tabular-nums; }
-.pthink .tbar { display: block; height: 4px; background: var(--surface-dim); border-radius: 3px; margin: 8px auto 0; max-width: 260px; overflow: hidden; }
-.pthink .tfill { display: block; height: 100%; background: var(--accent); width: 0; }
-.typed-mock { border: 1px solid var(--border); border-radius: 10px; background: var(--surface-dim); padding: 8px 14px; display: inline-block; min-width: 200px; min-height: 1.4em; }
+.stagecard { max-width: 620px; margin: 0 auto; }
+.drill-title-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.drill-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; }
+.drill-prompt { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.drill-english { font-family: var(--font-display); font-size: 1.55rem; line-height: 1.3; }
+.drill-tense { text-align: right; font-size: 0.74rem; color: var(--text-muted); min-width: 130px; }
+.kbadge { display: inline-block; font-size: 0.68rem; padding: 1px 8px; border-radius: 9px; color: #fff; margin-top: 4px; }
+.drill-answer { border: 1px dashed var(--border); border-radius: 10px; min-height: 74px; margin-top: 16px; display: flex; align-items: center; justify-content: center; padding: 12px; }
+.drill-answer.revealed { border-style: solid; }
+.tap-dim { color: var(--text-muted); font-size: 0.95rem; }
+.typed-mock { border: 1px solid var(--border); border-radius: 10px; background: var(--surface-dim); padding: 8px 14px; display: inline-block; min-width: 220px; min-height: 1.5em; font-size: 1.15rem; text-align: left; }
 .pcaret { animation: pblink 1s step-end infinite; color: var(--accent); font-weight: 400; }
 @keyframes pblink { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .pcaret { animation: none; } }
-.pans { font-family: var(--font-display); font-size: 1.7rem; margin: 12px 0 2px; }
-.pans.ok { color: var(--good); }
-.pans.bad { color: var(--bad); }
-.pwrote { font-size: 0.95rem; color: var(--bad); }
-.pmeta { font-size: 0.78rem; color: var(--text-muted); margin-top: 12px; font-variant-numeric: tabular-nums; }
+.drill-spanish { font-family: var(--font-display); font-size: 1.8rem; }
+.drill-spanish.ok { color: var(--good); }
+.drill-spanish.bad { color: var(--bad); }
+.pwrote { font-size: 0.9rem; color: var(--bad); margin-top: 4px; }
+.pthink { font-size: 0.8rem; color: var(--text-muted); margin-top: 12px; text-align: center; font-variant-numeric: tabular-nums; }
+.pthink .tbar { display: block; height: 4px; background: var(--surface-dim); border-radius: 3px; margin: 6px auto 0; max-width: 260px; overflow: hidden; }
+.pthink .tfill { display: block; height: 100%; background: var(--accent); width: 0; }
+.p-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+.p-actions .pbtn { font-family: var(--font-ui); font-size: 0.9rem; border-radius: 9px; padding: 8px 22px; border: 1px solid var(--border); background: var(--surface-dim); color: var(--text-muted); opacity: 0.45; }
+.p-actions .pbtn.hit-ok { background: var(--good); border-color: var(--good); color: #fff; opacity: 1; font-weight: 600; }
+.p-actions .pbtn.hit-bad { background: var(--bad); border-color: var(--bad); color: #fff; opacity: 1; font-weight: 600; }
+.pmeta { font-size: 0.76rem; color: var(--text-muted); margin-top: 10px; text-align: center; font-variant-numeric: tabular-nums; }
 .runline { text-align: center; font-size: 0.82rem; color: var(--text-secondary); margin-top: 12px; font-variant-numeric: tabular-nums; }
 .foot { font-size: 0.72rem; color: var(--text-muted); margin-top: 16px; line-height: 1.6; text-align: center; }
 </style>
@@ -102,7 +111,8 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
     <span id="posLabel">0 / 0</span>
   </div>
   <div class="stagecard">
-    <div class="pcard" id="pcard"></div>
+    <div class="drill-title-row"><span id="ptitle"></span><span id="pclockrow"></span></div>
+    <div id="pcard"></div>
     <div class="runline" id="runline"></div>
   </div>
   <div class="foot">The card holds for as long as the learner actually thought (logged think-time), then reveals what happened. Space = play/pause · → = step.</div>
@@ -114,6 +124,8 @@ const TLABEL={infinitive:'Infinitive', present:'Present', preterite:'Preterite',
   future:'Future', conditional:'Conditional', imperative_aff:'Imp (+)', imperative_neg:'Imp (−)'};
 const PERSONS=['yo','tú','él/ella','nosotros','vosotros','ellos/ellas'];
 const IMPP=['tú','usted','nosotros','vosotros','ustedes'];
+const ENP=['I','you','he','we','you all','they'];
+const VERB_EN={"hablar":["to speak","speak","speaks","spoke"],"caminar":["to walk","walk","walks","walked"],"trabajar":["to work","work","works","worked"],"comprar":["to buy","buy","buys","bought"],"estudiar":["to study","study","studies","studied"],"escuchar":["to listen","listen","listens","listened"],"mirar":["to watch","watch","watches","watched"],"comer":["to eat","eat","eats","ate"],"beber":["to drink","drink","drinks","drank"],"aprender":["to learn","learn","learns","learned"],"correr":["to run","run","runs","ran"],"vender":["to sell","sell","sells","sold"],"responder":["to answer","answer","answers","answered"],"prometer":["to promise","promise","promises","promised"],"vivir":["to live","live","lives","lived"],"decidir":["to decide","decide","decides","decided"],"subir":["to go up","climb","climbs","climbed"],"recibir":["to receive","receive","receives","received"],"abrir":["to open","open","opens","opened"],"compartir":["to share","share","shares","shared"],"pensar":["to think","think","thinks","thought"],"contar":["to count, to tell","count","counts","counted"],"cerrar":["to close","close","closes","closed"],"volver":["to return","return","returns","returned"],"encontrar":["to find","find","finds","found"],"entender":["to understand","understand","understands","understood"],"recordar":["to remember","remember","remembers","remembered"],"querer":["to want","want","wants","wanted"],"sentir":["to feel","feel","feels","felt"],"dormir":["to sleep","sleep","sleeps","slept"],"mentir":["to lie","lie","lies","lied"],"morir":["to die","die","dies","died"],"advertir":["to warn","warn","warns","warned"],"convertir":["to convert","convert","converts","converted"],"pedir":["to ask for","ask for","asks for","asked for"],"servir":["to serve","serve","serves","served"],"repetir":["to repeat","repeat","repeats","repeated"],"medir":["to measure","measure","measures","measured"],"vestir":["to dress","dress","dresses","dressed"],"buscar":["to search","search","searches","searched"],"llegar":["to arrive","arrive","arrives","arrived"],"cruzar":["to cross","cross","crosses","crossed"],"tocar":["to touch, to play","play","plays","played"],"pagar":["to pay","pay","pays","paid"],"empezar":["to begin","begin","begins","began"],"conocer":["to know, to meet","know","knows","knew"],"vencer":["to defeat","defeat","defeats","defeated"],"recoger":["to pick up","pick up","picks up","picked up"],"escoger":["to choose","choose","chooses","chose"],"dirigir":["to direct","direct","directs","directed"],"exigir":["to demand","demand","demands","demanded"],"distinguir":["to distinguish","distinguish","distinguishes","distinguished"],"seguir":["to follow","follow","follows","followed"],"traducir":["to translate","translate","translates","translated"],"producir":["to produce","produce","produces","produced"],"conducir":["to drive","drive","drives","drove"],"construir":["to build","build","builds","built"],"destruir":["to destroy","destroy","destroys","destroyed"],"incluir":["to include","include","includes","included"],"leer":["to read","read","reads","read"],"creer":["to believe","believe","believes","believed"],"poseer":["to possess","possess","possesses","possessed"],"proveer":["to provide","provide","provides","provided"],"enviar":["to send","send","sends","sent"],"confiar":["to trust","trust","trusts","trusted"],"actuar":["to act","act","acts","acted"],"continuar":["to continue","continue","continues","continued"],"hacer":["to do, to make","do","does","did"],"decir":["to say, to tell","say","says","said"],"dar":["to give","give","gives","gave"],"ver":["to see","see","sees","saw"],"saber":["to know (facts)","know","knows","knew"],"caer":["to fall","fall","falls","fell"],"traer":["to bring","bring","brings","brought"],"oír":["to hear","hear","hears","heard"],"andar":["to walk","walk","walks","walked"],"poner":["to put","put","puts","put"],"salir":["to leave","leave","leaves","left"],"caber":["to fit","fit","fits","fit"]};
 const KINDC={power:'#8E5A9E', redeem:'#B8762C', square:'#2E6E8E', ivl:'#3A7A56', ivlInf:'#6FAE8B', intro:'#C9A44A', round:'#5B8DB0', maint:'#8a8a8a', other:'#8a8a8a'};
 function kindOf(e) {
   if(e.k==='power') return 'power';
@@ -269,24 +281,49 @@ function gapMs(e, i) {   // reveal-to-next-card time from real timestamps
   if(!nxt) return 1500;
   return Math.max(400, Math.min((nxt.ts-e.ts)-thinkMs(e,i), 15000));
 }
+function englishFor(e) {
+  const d=VERB_EN[e.v];
+  if(e.tn==='infinitive') return d ? d[0] : ('('+e.v+')');
+  const base=d?d[1]:e.v, third=d?d[2]:base+'s', past=d?d[3]:base+'ed';
+  const p=e.p==null?0:e.p;
+  if(e.tn==='imperative_aff') return base+'! <span style="opacity:0.6">('+(IMPP[p]||'')+')</span>';
+  if(e.tn==='imperative_neg') return "don't "+base+'! <span style="opacity:0.6">('+(IMPP[p]||'')+')</span>';
+  const pron=ENP[p]||'';
+  if(e.tn==='present') return pron+' '+(p===2?third:base);
+  if(e.tn==='preterite') return pron+' '+past;
+  if(e.tn==='imperfect') return pron+' used to '+base;
+  if(e.tn==='future') return pron+' will '+base;
+  if(e.tn==='conditional') return pron+' would '+base;
+  return pron+' '+base;
+}
 function render(revealed) {
   const e=cur.items[idx];
   const kind=kindOf(e);
   const per = e.tn==='infinitive'||e.p==null ? null
     : (e.tn && e.tn.indexOf('imperative')===0 ? IMPP[e.p]||('p'+e.p) : PERSONS[e.p]||('p'+e.p));
-  let h='<div class="pcap">'+esc(TLABEL[e.tn]||e.tn)+(per?' · '+esc(per):'')+
-    '<span class="kbadge" style="background:'+(KINDC[kind]||'#888')+'">'+kind+'</span></div>';
+  document.getElementById('ptitle').textContent='Session replay · card '+(idx+1)+' of '+cur.items.length;
+  document.getElementById('pclockrow').textContent=new Date(e.ts).toLocaleTimeString();
+  let h='<div class="drill-box"><div class="drill-prompt">'+
+    '<div class="drill-english">'+englishFor(e)+'</div>'+
+    '<div class="drill-tense">'+esc(TLABEL[e.tn]||e.tn)+(per?' · '+esc(per):'')+(e.due?'<br>star chance':'')+
+    '<br><span class="kbadge" style="background:'+(KINDC[kind]||'#888')+'">'+kind+'</span></div></div>';
   if(!revealed) {
-    if(e.w) h+='<div class="peng typed-mock">&nbsp;<span id="typedSim"></span><span class="pcaret">|</span>&nbsp;</div>';
-    else h+='<div class="peng" style="opacity:0.5">\u2026recalling\u2026</div>';
+    h+='<div class="drill-answer">';
+    if(e.w) h+='<span class="typed-mock"><span id="typedSim"></span><span class="pcaret">|</span></span>';
+    else h+='<span class="tap-dim">Tap to reveal</span>';
+    h+='</div>';
     h+='<div class="pthink">thinking <span id="tclock">0.0</span> s'+
        '<span class="tbar"><span class="tfill" id="tfill"></span></span></div>';
+    h+='<div class="p-actions"><span class="pbtn">Correct</span><span class="pbtn">Wrong ✗</span></div>';
   } else {
-    h+='<div class="pans '+(e.r===1?'ok':'bad')+'">'+esc(e.v)+(e.tn!=='infinitive'&&e.w&&e.r===1?' → '+esc(e.w):'')+'</div>';
-    if(e.w && e.r!==1) h+='<div class="pwrote">wrote: '+esc(e.w)+'</div>';
-    h+='<div class="pans '+(e.r===1?'ok':'bad')+'" style="font-size:1.2rem">'+(e.r===1?'✓ correct':'✗ wrong')+'</div>';
-    h+='<div class="pmeta">'+(e.ms!=null?('thought '+(e.ms/1000).toFixed(1)+' s · '):'')+(e.fk!=null?('first key '+(e.fk/1000).toFixed(1)+' s · '):'')+(e.ik!=null?(e.ik+' ms/key · '):'')+(e.typed?'typed':'tap-reveal')+(e.bs?(' · '+e.bs+' backspace'+(e.bs>1?'s':'')):'')+(e.due?' · star chance':'')+(e.iv!=null?' · interval item':'')+'</div>';
+    h+='<div class="drill-answer revealed"><div>'+
+       '<div class="drill-spanish '+(e.r===1?'ok':'bad')+'">'+esc(e.r===1&&e.w?e.w:e.v)+'</div>'+
+       (e.w && e.r!==1 ? '<div class="pwrote">wrote: '+esc(e.w)+'</div>' : '')+
+       '</div></div>';
+    h+='<div class="p-actions"><span class="pbtn'+(e.r===1?' hit-ok':'')+'">Correct</span><span class="pbtn'+(e.r!==1?' hit-bad':'')+'">Wrong ✗</span></div>';
+    h+='<div class="pmeta">'+(e.ms!=null?('thought '+(e.ms/1000).toFixed(1)+' s · '):'')+(e.fk!=null?('first key '+(e.fk/1000).toFixed(1)+' s · '):'')+(e.ik!=null?(e.ik+' ms/key · '):'')+(e.typed?'typed':'tap-reveal')+(e.bs?(' · '+e.bs+' backspace'+(e.bs>1?'s':'')):'')+(e.iv!=null?' · interval item':'')+'</div>';
   }
+  h+='</div>';
   document.getElementById('pcard').innerHTML=h;
   const done=cur.items.slice(0, idx+(revealed?1:0));
   const c=done.filter(x=>x.r===1).length;
