@@ -72,7 +72,7 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp7</span></small></h1>
+  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp8</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -281,6 +281,25 @@ function gapMs(e, i) {   // reveal-to-next-card time from real timestamps
   if(!nxt) return 1500;
   return Math.max(400, Math.min((nxt.ts-e.ts)-thinkMs(e,i), 15000));
 }
+function edTimeline(e) {
+  // exact edit replay from the recorded op runs: doomed chars are dashes,
+  // backspaces peel them one by one, kept chars show their real letters
+  if(!e.ed || !e.w) return null;
+  const ops=[]; const re=/([id])(\d+)/g; let m;
+  while((m=re.exec(e.ed))!==null) ops.push({t:m[1], n:parseInt(m[2],10)});
+  if(!ops.length) return null;
+  const buf=[], frames=[];
+  ops.forEach(o=>{
+    for(let i=0;i<o.n;i++) {
+      if(o.t==='i') { buf.push({}); frames.push(buf.slice()); }
+      else { const s=buf.pop(); if(s) s.del=true; frames.push(buf.slice()); }
+    }
+  });
+  const survivors=buf.filter(s=>!s.del);
+  if(survivors.length!==e.w.length) return null;   // ops don't reconcile — fall back
+  survivors.forEach((s,i)=>{ s.ch=e.w[i]; });
+  return frames.map(f=>f.map(s=>s.del?'-':(s.ch||'-')).join(''));
+}
 function englishFor(e) {
   const d=VERB_EN[e.v];
   if(e.tn==='infinitive') return d ? d[0] : ('('+e.v+')');
@@ -353,10 +372,13 @@ function playStep() {
       const span=Math.max(200, full-start);
       const frac=Math.max(0, Math.min(1, (gone-start)/span));
       const bs=e.bs||0, L=e.w.length;
-      if(!bs) {
+      const tl=edTimeline(e);
+      if(tl) {
+        const k=Math.min(tl.length-1, Math.floor(tl.length*frac));
+        sim.textContent=tl[Math.max(0,k)];
+      } else if(!bs) {
         sim.textContent=e.w.slice(0, Math.floor(L*frac));
       } else {
-        // deletions shown as dashes at a deterministic correction point (exact spot isn't logged)
         const cut=1+(e.ts%Math.max(1, L-1));
         const total=L+bs;
         const k=Math.floor(total*frac);
