@@ -68,12 +68,21 @@ input[type=range] { flex: 1; min-width: 160px; accent-color: var(--accent); }
 .p-actions .pbtn.hit-ok { background: var(--good); border-color: var(--good); color: #fff; opacity: 1; font-weight: 600; }
 .p-actions .pbtn.hit-bad { background: var(--bad); border-color: var(--bad); color: #fff; opacity: 1; font-weight: 600; }
 .pmeta { font-size: 0.76rem; color: var(--text-muted); margin-top: 10px; text-align: center; font-variant-numeric: tabular-nums; }
+.dev-hist { font-size: 0.7rem; margin-top: 12px; opacity: 0.9; word-break: break-all; text-align: left; color: var(--text-muted); }
+.dev-hist .dh-ok { color: var(--good); }
+.dev-hist .dh-x { color: var(--bad); }
+.dev-hist .dh-col { display: inline-flex; flex-direction: column; align-items: center; margin-right: 3px; }
+.dev-hist .dh-col i { font-style: normal; font-size: 0.55rem; color: var(--text-muted); line-height: 1.1; }
+.dev-hist .dh-cur { outline: 1px solid var(--accent); border-radius: 4px; padding: 0 2px; background: var(--surface-dim); }
+.dev-hist .dh-future { opacity: 0.35; }
+.dev-hist .dh-sep span { color: var(--text-muted); font-size: 0.7rem; }
+.dev-hist .dh-sep.dh-day span { color: var(--accent); font-weight: 700; font-size: 0.6rem; }
 .runline { text-align: center; font-size: 0.82rem; color: var(--text-secondary); margin-top: 12px; font-variant-numeric: tabular-nums; }
 .foot { font-size: 0.72rem; color: var(--text-muted); margin-top: 16px; line-height: 1.6; text-align: center; }
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp9</span></small></h1>
+  <h1>Conjuga · Session Player<small>replays a real session, delays and all · <span style="opacity:0.5">sp10</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -233,10 +242,12 @@ dz.addEventListener('drop', e=>{
 });
 
 /* ---------- sessions ---------- */
+let allItems=[];
 function acceptData(raw, label) {
   let arr=Array.isArray(raw)?raw:(raw&&raw.attempts);
   if(!arr||!arr.length){ document.getElementById('srcStatus').textContent='no attempts in that file'; return; }
   arr=arr.slice().sort((a,b)=>(a.ts||0)-(b.ts||0));
+  allItems=arr;
   sessions=[];
   let s=null;
   arr.forEach(e=>{
@@ -298,6 +309,33 @@ function edTimeline(e) {
   survivors.forEach((s,i)=>{ s.ch=e.w[i]; });
   return frames.map(f=>f.map(s=>s.del?'-':(s.ch||'-')).join(''));
 }
+function histStripHtml(cur) {
+  const cell=[cur.g, cur.tn, String(cur.p==null?0:cur.p)];
+  const hist=[]; let prevIdx=null;
+  allItems.forEach((e,i)=>{
+    if(e.g===cell[0] && e.tn===cell[1] && String(e.p==null?0:e.p)===cell[2]) {
+      hist.push({r:e.r, ts:e.ts, ref:e, gap: prevIdx==null?null:(i-prevIdx-1)});
+      prevIdx=i;
+    }
+  });
+  if(!hist.length) return '';
+  const ci=hist.findIndex(h=>h.ref===cur);
+  let out='';
+  hist.forEach((h,i)=>{
+    if(i>0) {
+      const dt=h.ts-hist[i-1].ts;
+      if(dt>30*60*1000) {
+        const dayChanged=new Date(h.ts).toDateString()!==new Date(hist[i-1].ts).toDateString();
+        const lbl = dt>=48*3600*1000 ? Math.round(dt/86400000)+'d' : dt>=90*60*1000 ? Math.round(dt/3600000)+'h' : Math.round(dt/60000)+'m';
+        const d=new Date(h.ts);
+        out+='<span class="dh-col dh-sep'+(dayChanged?' dh-day':'')+'"><i>'+lbl+'</i><span>'+(dayChanged?(d.getDate()+'.'+(d.getMonth()+1)+'.'):'\u2016')+'</span></span>';
+      }
+    }
+    const cls = i===ci ? ' dh-cur' : (ci!==-1 && i>ci ? ' dh-future' : '');
+    out+='<span class="dh-col'+cls+'"><i>'+(h.gap==null?'\u00b7':h.gap)+'</i>'+(h.r===1?'<span class="dh-ok">\u2713</span>':'<span class="dh-x">\u2717</span>')+'</span>';
+  });
+  return '<div class="dev-hist">cell '+hist.length+': '+out+'</div>';
+}
 function englishFor(e) {
   const d=VERB_EN[e.v];
   if(e.tn==='infinitive') return d ? d[0] : ('('+e.v+')');
@@ -349,6 +387,7 @@ function render(revealed) {
     h+='<div class="p-actions"><span class="pbtn'+(e.r===1?' hit-ok':'')+'">Correct</span><span class="pbtn'+(e.r!==1?' hit-bad':'')+'">Wrong ✗</span></div>';
     h+='<div class="pmeta">'+(e.ms!=null?('thought '+(e.ms/1000).toFixed(1)+' s · '):'')+(e.fk!=null?('first key '+(e.fk/1000).toFixed(1)+' s · '):'')+(e.ik!=null?(e.ik+' ms/key · '):'')+(e.typed?'typed':'tap-reveal')+(e.bs?(' · '+e.bs+' backspace'+(e.bs>1?'s':'')):'')+(e.iv!=null?' · interval item':'')+'</div>';
   }
+  h+=histStripHtml(e);
   h+='</div>';
   document.getElementById('pcard').innerHTML=h;
   const done=cur.items.slice(0, idx+(revealed?1:0));
