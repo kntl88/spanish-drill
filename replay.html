@@ -132,7 +132,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp25</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp26</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -208,7 +208,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
   </div>
   <div class="verbchips" id="verbChips"></div>
   <div class="foot">
-    Heat = cumulative correct rate for that cell up to the current answer (red 0% → green 100%; faint until ~6 answers).
+    Heat and % = rolling accuracy over that cell's last 10 answers up to this point (red 0% → green 100%, faint until ~6 answers; a trailing ·N means only N answers so far) — the same window the app's level test uses. The fraction above is the cell's whole record.
     Top bar = this cell's share of the type's attempts (widest bar = most-drilled cell).
     Imperative rows use the command persons tú · ud · nos · vos · uds at p0–p4.
     ✓/✗ marks the cell of the answer just replayed. Keys: Space play · ← → step · Home restart.
@@ -405,11 +405,12 @@ function render(lastE, flash) {
       return;
     }
     td.classList.remove('empty');
-    const rate = c.c / c.n;
-    td.style.background = heatColor(rate, c.n);
+    const win = (c.last && c.last.length) ? c.last : [c.c > 0 ? 1 : 0];
+    const roll = win.reduce((s, x) => s + x, 0) / win.length;      // rolling last ≤10
+    td.style.background = heatColor(roll, (c.last || []).length);
     bar.style.width = Math.round(100 * c.n / maxN) + '%';
     cnt.textContent = c.c + '/' + c.n;
-    pct.textContent = Math.round(100 * rate) + '%';
+    pct.textContent = Math.round(100 * roll) + '%' + ((c.last || []).length < 10 ? '·' + (c.last || []).length : '');
   });
   if (lastE) {
     const td = document.getElementById('c_' + cellKey(lastE).replace('|', '_'));
