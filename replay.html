@@ -132,7 +132,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp29</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp30</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -231,12 +231,12 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
     <div class="vpick" id="vPick"></div>
-    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them (dashed) on the tense panels — the existing curves and their scale are untouched; overlaid verbs and person lines advance one x-unit per own answer (flat unit = wrong, rising unit = correct), anchored where they first entered the tense; verbs read on their own right-hand scale with a faint dashed 90%-pace reference; each dot is one real attempt.
+    <div class="gsub" style="margin:-4px 0 10px">Pick verbs to study them: small panels show each verb's line, the enlarged panel splits the verb into its persons (colors = persons, line style = verb). Every line starts at the origin and advances one x-unit per own answer — rising = correct, flat = wrong (dot marks the miss) — against the green 90% reference.
       <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
       <button class="ctl" id="vClear">clear</button>
     </div>
     <div id="stairWrap">
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers, rising = corrects, flat = a wrong (red tick) · per-attempt mode: grey dash = perfect run, green dashes = the 90% target slope (a healthy curve runs parallel to them) · calendar mode: x is real time, idle gaps compressed to a dashed break · full-height dashed rules mark where a new stage began (labelled when enlarged) · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers, rising = corrects, flat = a wrong (red tick) · per-attempt mode: grey dash = perfect run, green dashes = the 90% target slope (a healthy curve runs parallel to them) · calendar mode: x is real time, idle gaps compressed to a dashed break · full-height dashed rules mark where a new stage began (aggregate panels) · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
     <div class="plegend" id="kindLegend" style="margin:-2px 0 10px"></div>
     <div class="stairs" id="stairGrid"></div>
     <div class="vtable" id="vTable"></div>
@@ -745,31 +745,47 @@ function renderGraphs() {
     if(big && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       h+='<div class="plegend">'+labels.map((lbl,p)=>{
-        const pa=a.filter(e=>String(e.p)===String(p));
+        const pa=(selVerbs.length ? a.filter(e=>selVerbs.indexOf(e.v)!==-1) : a).filter(e=>String(e.p)===String(p));
         const pc=pa.filter(e=>e.r===1).length;
         return '<span class="pl"><span class="sw" style="background:'+PERSON_COLORS[p]+'"></span>'+escHtml(lbl)+
           (pa.length?(' '+pc+'/'+pa.length):' —')+'</span>';
       }).join('')+
-      (vsel.length ? vsel.map(s=>{
-        const vc=s.pts.filter(p=>p.e.r===1).length;
-        return '<span class="pl"><span class="sw dash" style="background:'+s.color+'"></span>'+escHtml(s.verb)+' '+vc+'/'+s.pts.length+'</span>';
-      }).join('') : '')+'</div>';
+      (selVerbs.length>1 ? '<span class="pl" style="opacity:0.8">line style: '+selVerbs.map((v,vi)=>escHtml(v)+' '+(vi%3===1?'dashed':vi%3===2?'dotted':'solid')).join(' · ')+'</span>' : '')+'</div>';
     }
     return h+'</div>';
   }).join('');
   order.forEach(tn=>{
     if(!byTense[tn]) return;
-    if(stairBig===tn && tn!=='infinitive') {
+    const arr=byTense[tn];
+    const big = stairBig===tn;
+    if(selVerbs.length) {
+      let series;
+      if(big && tn!=='infinitive') {
+        // a selected verb expands into its per-person lines (dash style = verb)
+        const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
+        series=[];
+        selVerbs.forEach((v,vi)=>{
+          labels.forEach((lbl,p)=>{
+            const pts=[];
+            arr.forEach((e,i)=>{ if(e.v===v && String(e.p)===String(p)) pts.push({i:i, e:e}); });
+            if(pts.length) series.push({label:v+' '+lbl, color:PERSON_COLORS[p], dash:(vi%3===1?[6,3]:vi%3===2?[2,3]:null), pts:pts});
+          });
+        });
+      } else {
+        series=verbSeriesFor(arr);
+      }
+      if(series.length) { drawPerf('stair_'+tn, series, big?320:210); return; }
+    }
+    if(big && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
-      const arr=byTense[tn];
       const series=labels.map((lbl,p)=>{
         const pts=[];
         arr.forEach((e,i)=>{ if(String(e.p)===String(p)) pts.push({i:i, e:e}); });
         return {label:lbl, color:PERSON_COLORS[p], pts:pts};
       }).filter(s=>s.pts.length);
-      drawStairMulti('stair_'+tn, arr, series, 320);
+      drawPerf('stair_'+tn, series, 320);
     } else {
-      drawStair('stair_'+tn, byTense[tn], stairBig===tn?320:210);
+      drawStair('stair_'+tn, arr, big?320:210);
     }
   });
   grid.querySelectorAll('.stair[data-tn]').forEach(el=>{
@@ -852,8 +868,6 @@ function drawStair(cvId, attempts, height) {
   const N=attempts.length;
   const mode=gYMode();
   const vs=seriesValues(attempts, mode);
-  const vsel=verbSeriesFor(attempts);
-  const vseries=vsel.map(s=>{ let v=0; return s.pts.map(p=>{ v += (p.e.r===1)?(mode==='goal'?0.1:1):(mode==='goal'?-0.9:0); return {i:p.i, e:p.e, v:v}; }); });
   const timeMode = gAxisMode==='time';
   const layout = timeMode ? segLayout(padL, iw) : null;
   const tx = timeMode ? txFor(layout) : null;
@@ -935,35 +949,10 @@ function drawStair(cvId, attempts, height) {
   ctx.fillStyle=accent;
   ctx.beginPath(); ctx.arc(lastX, Y(prev), 3, 0, 7); ctx.fill();
   // picked verbs: drawn on top, same axes and scale, clipped to the frame
-  if(vsel.length) {
-    const vHi=Math.max(1, ...vseries.map(a=>a.length?a[a.length-1].v:0));
-    const Yv=v=>padT+ih*(1-v/vHi);                       // verbs read on their own right-hand scale
-    ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
-    vsel.forEach((s,si)=>{
-      const a=vseries[si];
-      const x0=s.pts[0].i;                                  // entry anchor (chronological)
-      const vx=k=> timeMode ? tx(a[Math.min(k,a.length-1)].e.ts) : X(x0+k);   // one unit per own answer
-      ctx.setLineDash([5,3]);
-      ctx.strokeStyle=s.color; ctx.lineWidth=(H>260?2.2:1.6);
-      ctx.beginPath();
-      ctx.moveTo(vx(0)- (timeMode?0:iw/Math.max(1,N)), Yv(0));
-      a.forEach((p,k)=>{ ctx.lineTo(vx(k), Yv(p.v)); });    // wrong = flat unit, correct = rising unit
-      ctx.stroke();
-      ctx.setLineDash([]);
-      // this verb's own 90% pace across its compressed span
-      ctx.globalAlpha=0.3; ctx.setLineDash([2,3]); ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(vx(0)-(timeMode?0:iw/Math.max(1,N)), Yv(0)); ctx.lineTo(vx(a.length-1), Yv(0.9*a.length)); ctx.stroke();
-      ctx.setLineDash([]); ctx.globalAlpha=1; ctx.lineWidth=(H>260?2.2:1.6);
-      ctx.fillStyle=s.color;
-      a.forEach((p,k)=>{ ctx.beginPath(); ctx.arc(vx(k), Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });
-    });
-    ctx.restore();
-    ctx.fillStyle=muted; ctx.textAlign='right';
-    ctx.fillText(vHi+' ✓ verbs', padL+iw-3, padT+9);
-    ctx.fillText('0', padL+iw-3, padT+ih-2);
-  }
 }
-function drawStairMulti(cvId, attempts, series, height) {
+function drawPerf(cvId, seriesList, height) {
+  // performance plot: every line starts at the origin and advances one x-unit
+  // per its own answer - flat unit = wrong, rising unit = correct.
   const cv=document.getElementById(cvId);
   if(!cv) return;
   const W=cv.clientWidth||340, H=height||320;
@@ -973,102 +962,45 @@ function drawStairMulti(cvId, attempts, series, height) {
   ctx.clearRect(0,0,W,H);
   const padL=34, padR=8, padT=8, padB=16;
   const iw=W-padL-padR, ih=H-padT-padB;
-  const border=cssVar('--border'), muted=cssVar('--text-muted'), good=cssVar('--good'), accent=cssVar('--accent'), bad=cssVar('--bad');
-  const timeMode = gAxisMode==='time';
-  const layout = timeMode ? segLayout(padL, iw) : null;
-  const tx = timeMode ? txFor(layout) : null;
-  const N=attempts.length;                         // shared axis: this tense's own sequence
-  const X=i=>padL+iw*(i/Math.max(1,N));
-  const vseries=series.map(s=>{ let v=0; return s.pts.map(p=>{ if(p.e.r===1) v++; return {i:p.i, e:p.e, v:v}; }); });
-  const lo=0, hi=Math.max(1, ...vseries.map(a=>a.length?a[a.length-1].v:0));
-  const Y=v=>padT+ih*(1-(v-lo)/(hi-lo));
+  const border=cssVar('--border'), muted=cssVar('--text-muted'), good=cssVar('--good');
+  const vser=seriesList.map(s=>{ let v=0; return s.pts.map(p=>{ if(p.e.r===1) v++; return {e:p.e, v:v}; }); });
+  const NA=Math.max(1, ...seriesList.map(s=>s.pts.length));
+  const hi=Math.max(1, ...vser.map(a=>a.length?a[a.length-1].v:0));
+  const X=i=>padL+iw*(i/NA);
+  const Y=v=>padT+ih*(1-v/hi);
   ctx.font='9px -apple-system, sans-serif';
   ctx.strokeStyle=border; ctx.lineWidth=1;
   ctx.strokeRect(padL,padT,iw,ih);
   ctx.fillStyle=muted; ctx.textAlign='right';
-  ctx.fillText(hi.toFixed(0)+' ✓', padL-3, padT+7);
+  ctx.fillText(hi+' \u2713', padL-3, padT+7);
   ctx.fillText('0', padL-3, padT+ih+3);
-  if(timeMode && layout) {
-    layout.forEach((L,i)=>{
-      ctx.fillStyle=muted; ctx.textAlign='left';
-      ctx.fillText(fmtDay(L.t0), L.x0, H-3);
-      if(i>0) {
-        const gx=L.x0-SEG_GAP_PX/2;
-        ctx.strokeStyle=muted; ctx.globalAlpha=0.5; ctx.setLineDash([3,4]);
-        ctx.beginPath(); ctx.moveTo(gx,padT); ctx.lineTo(gx,padT+ih); ctx.stroke();
-        ctx.setLineDash([]); ctx.globalAlpha=1;
-      }
-    });
-  } else {
-    ctx.fillStyle=muted; ctx.textAlign='center';
-    ctx.fillText(N+' attempts in this tense', padL+iw/2, H-3);
-    // with one x-unit per own answer, a healthy line climbs 0.9 per unit again
-    const gSlope=0.9;
-    ctx.save();
-    ctx.beginPath(); ctx.rect(padL, padT, iw, ih); ctx.clip();
-    ctx.strokeStyle=good; ctx.globalAlpha=0.13; ctx.setLineDash([2,4]); ctx.lineWidth=1;
-    const dA=Math.max(2, N/6);
-    for(let a=-Math.ceil((hi/gSlope)/dA)*dA; a<N; a+=dA) {
-      ctx.beginPath(); ctx.moveTo(X(a), Y(0)); ctx.lineTo(X(N), Y(gSlope*(N-a))); ctx.stroke();
-    }
-    ctx.restore();
-    ctx.setLineDash([]); ctx.globalAlpha=1;
+  ctx.textAlign='center'; ctx.fillText('attempts (each line its own count, longest '+NA+')', padL+iw/2, H-3);
+  // 90% guide grid from the origin family
+  ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
+  ctx.strokeStyle=good; ctx.globalAlpha=0.13; ctx.setLineDash([2,4]); ctx.lineWidth=1;
+  const dA=Math.max(2, NA/6);
+  for(let g=-Math.ceil((hi/0.9)/dA)*dA; g<NA; g+=dA) {
+    ctx.beginPath(); ctx.moveTo(X(g), Y(0)); ctx.lineTo(X(NA), Y(0.9*(NA-g))); ctx.stroke();
   }
-  // stage boundaries
-  stageMarks(attempts).forEach(m=>{
-    const x = timeMode ? tx(m.e.ts) : X(m.i);
-    ctx.strokeStyle=muted; ctx.globalAlpha=0.5; ctx.setLineDash([4,3]); ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, padT+ih); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha=1;
-    if(m.label) { ctx.fillStyle=muted; ctx.textAlign='left'; ctx.fillText(m.label, x+3, padT+9); }
-  });
-  // interval bars + practice-context strip for the whole tense
-  drawDeco(ctx, attempts, timeMode, tx, X, padT, ih, accent);
-  const vsel=verbSeriesFor(attempts);
-  const vv=vsel.map(s=>{ let v=0; return s.pts.map(p=>{ if(p.e.r===1) v++; return {i:p.i, e:p.e, v:v}; }); });
-  series.forEach((s,si)=>{
-    const off=(si-(series.length-1)/2)*2.5;
-    const a=vseries[si];
+  ctx.restore(); ctx.setLineDash([]); ctx.globalAlpha=1;
+  // emphasized 90% line from the origin itself
+  ctx.strokeStyle=good; ctx.globalAlpha=0.5; ctx.setLineDash([5,4]);
+  const r9=Math.min(NA, hi/0.9);
+  ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(r9), Y(0.9*r9)); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha=1;
+  seriesList.forEach((s,si)=>{
+    const a=vser[si];
     if(!a.length) return;
-    const x0=s.pts[0].i;
-    const px=k=> (timeMode ? tx(a[Math.min(k,a.length-1)].e.ts) : X(x0+k))+off;   // one unit per own answer
-    ctx.strokeStyle=s.color; ctx.lineWidth=1.7;
-    ctx.beginPath();
-    ctx.moveTo(px(0)-(timeMode?0:iw/Math.max(1,N)), Y(0));
-    let prev=0;
-    a.forEach((p,k)=>{ ctx.lineTo(px(k), Y(p.v)); prev=p.v; });
+    if(s.dash) ctx.setLineDash(s.dash);
+    ctx.strokeStyle=s.color; ctx.lineWidth=H>260?2:1.7;
+    ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+    a.forEach((p,k)=>{ ctx.lineTo(X(k+1), Y(p.v)); });
     ctx.stroke();
+    ctx.setLineDash([]);
     ctx.fillStyle=s.color;
-    ctx.beginPath(); ctx.arc(px(a.length-1), Y(prev), 2.8, 0, 7); ctx.fill();
+    a.forEach((p,k)=>{ if(p.e.r!==1) { ctx.beginPath(); ctx.arc(X(k+1), Y(p.v), 2.4, 0, 7); ctx.fill(); } });   // dot = a miss
+    ctx.beginPath(); ctx.arc(X(a.length), Y(a[a.length-1].v), 3, 0, 7); ctx.fill();
   });
-  // picked verbs on top of the person lines: same axes and scale, clipped
-  if(vsel.length) {
-    const vHi=Math.max(1, ...vv.map(a=>a.length?a[a.length-1].v:0));
-    const Yv=v=>padT+ih*(1-v/vHi);
-    ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
-    vsel.forEach((s,si)=>{
-      const a=vv[si];
-      if(!a.length) return;
-      const x0=s.pts[0].i;
-      const vx2=k=> timeMode ? tx(a[Math.min(k,a.length-1)].e.ts) : X(x0+k);
-      ctx.setLineDash([5,3]);
-      ctx.strokeStyle=s.color; ctx.lineWidth=2.2;
-      ctx.beginPath();
-      ctx.moveTo(vx2(0)-(timeMode?0:iw/Math.max(1,N)), Yv(0));
-      a.forEach((p,k)=>{ ctx.lineTo(vx2(k), Yv(p.v)); });
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.globalAlpha=0.3; ctx.setLineDash([2,3]); ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(vx2(0)-(timeMode?0:iw/Math.max(1,N)), Yv(0)); ctx.lineTo(vx2(a.length-1), Yv(0.9*a.length)); ctx.stroke();
-      ctx.setLineDash([]); ctx.globalAlpha=1; ctx.lineWidth=2.2;
-      ctx.fillStyle=s.color;
-      a.forEach((p,k)=>{ ctx.beginPath(); ctx.arc(vx2(k), Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });
-    });
-    ctx.restore();
-    ctx.fillStyle=muted; ctx.textAlign='right';
-    ctx.fillText(vHi+' ✓ verbs', padL+iw-3, padT+9);
-    ctx.fillText('0', padL+iw-3, padT+ih-2);
-  }
 }
 
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
