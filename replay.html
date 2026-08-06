@@ -132,7 +132,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp30</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp31</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -231,7 +231,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
     <div class="vpick" id="vPick"></div>
-    <div class="gsub" style="margin:-4px 0 10px">Pick verbs to study them: small panels show each verb's line, the enlarged panel splits the verb into its persons (colors = persons, line style = verb). Every line starts at the origin and advances one x-unit per own answer — rising = correct, flat = wrong (dot marks the miss) — against the green 90% reference.
+    <div class="gsub" style="margin:-4px 0 10px">Pick verbs and enlarge a tense: the all-persons graph stays exactly as it is, and the selected verb's per-person lines are drawn on top, dashed, in the same person colors — so prometer-yo reads directly against all-yo. Small panels are untouched by selection. Every line runs from the origin, one x-unit per own answer; dots mark misses.
       <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
       <button class="ctl" id="vClear">clear</button>
     </div>
@@ -745,12 +745,16 @@ function renderGraphs() {
     if(big && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       h+='<div class="plegend">'+labels.map((lbl,p)=>{
-        const pa=(selVerbs.length ? a.filter(e=>selVerbs.indexOf(e.v)!==-1) : a).filter(e=>String(e.p)===String(p));
+        const pa=a.filter(e=>String(e.p)===String(p));
         const pc=pa.filter(e=>e.r===1).length;
         return '<span class="pl"><span class="sw" style="background:'+PERSON_COLORS[p]+'"></span>'+escHtml(lbl)+
           (pa.length?(' '+pc+'/'+pa.length):' —')+'</span>';
       }).join('')+
-      (selVerbs.length>1 ? '<span class="pl" style="opacity:0.8">line style: '+selVerbs.map((v,vi)=>escHtml(v)+' '+(vi%3===1?'dashed':vi%3===2?'dotted':'solid')).join(' · ')+'</span>' : '')+'</div>';
+      selVerbs.map((v,vi)=>{
+        const va=a.filter(e=>e.v===v);
+        const vc=va.filter(e=>e.r===1).length;
+        return va.length?('<span class="pl"><span class="sw dash" style="color:'+VERB_COLORS[vi%VERB_COLORS.length]+'"></span>'+escHtml(v)+' '+vc+'/'+va.length+' ('+(vi%2===1?'dotted':'dashed')+')</span>'):'';
+      }).join('')+'</div>';
     }
     return h+'</div>';
   }).join('');
@@ -758,24 +762,6 @@ function renderGraphs() {
     if(!byTense[tn]) return;
     const arr=byTense[tn];
     const big = stairBig===tn;
-    if(selVerbs.length) {
-      let series;
-      if(big && tn!=='infinitive') {
-        // a selected verb expands into its per-person lines (dash style = verb)
-        const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
-        series=[];
-        selVerbs.forEach((v,vi)=>{
-          labels.forEach((lbl,p)=>{
-            const pts=[];
-            arr.forEach((e,i)=>{ if(e.v===v && String(e.p)===String(p)) pts.push({i:i, e:e}); });
-            if(pts.length) series.push({label:v+' '+lbl, color:PERSON_COLORS[p], dash:(vi%3===1?[6,3]:vi%3===2?[2,3]:null), pts:pts});
-          });
-        });
-      } else {
-        series=verbSeriesFor(arr);
-      }
-      if(series.length) { drawPerf('stair_'+tn, series, big?320:210); return; }
-    }
     if(big && tn!=='infinitive') {
       const labels = tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS;
       const series=labels.map((lbl,p)=>{
@@ -783,7 +769,20 @@ function renderGraphs() {
         arr.forEach((e,i)=>{ if(String(e.p)===String(p)) pts.push({i:i, e:e}); });
         return {label:lbl, color:PERSON_COLORS[p], pts:pts};
       }).filter(s=>s.pts.length);
+      // selected verbs ADD their per-person lines (dashed, same person colours) -
+      // the baseline person graph itself never changes
+      selVerbs.forEach((v,vi)=>{
+        labels.forEach((lbl,p)=>{
+          const pts=[];
+          arr.forEach((e,i)=>{ if(e.v===v && String(e.p)===String(p)) pts.push({i:i, e:e}); });
+          if(pts.length) series.push({label:v+' '+lbl, color:PERSON_COLORS[p], dash:(vi%2===1?[2,3]:[6,3]), pts:pts});
+        });
+      });
       drawPerf('stair_'+tn, series, 320);
+    } else if(big && tn==='infinitive' && selVerbs.length) {
+      const series=verbSeriesFor(arr);
+      if(series.length) drawPerf('stair_'+tn, series, 320);
+      else drawStair('stair_'+tn, arr, 320);
     } else {
       drawStair('stair_'+tn, arr, big?320:210);
     }
