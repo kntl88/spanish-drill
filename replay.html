@@ -108,6 +108,18 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 .vchipb.on { color: var(--accent-text); font-weight: 600; }
 .vchipb small { opacity: 0.7; font-size: 0.9em; margin-left: 4px; }
 #verbCanvas { width: 100%; display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.logsec { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; }
+.logsec h3 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; margin: 0 0 8px; }
+.logrow { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--surface-dim); }
+.logrow:last-child { border-bottom: none; }
+.logrow .llbl { min-width: 96px; font-size: 0.78rem; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+.dev-hist { font-size: 0.72rem; color: var(--text-muted); word-break: break-all; line-height: 2.1; }
+.dev-hist .dh-ok { color: var(--good); }
+.dev-hist .dh-x { color: var(--bad); }
+.dev-hist .dh-col { display: inline-flex; flex-direction: column; align-items: center; margin-right: 3px; vertical-align: bottom; }
+.dev-hist .dh-col i { font-style: normal; font-size: 0.55rem; color: var(--text-muted); line-height: 1.1; }
+.dev-hist .dh-sep span { color: var(--text-muted); font-size: 0.7rem; }
+.dev-hist .dh-sep.dh-day span { color: var(--accent); font-weight: 700; font-size: 0.6rem; }
 .vtable { margin-top: 12px; overflow-x: auto; }
 .vtable table { border-collapse: collapse; width: 100%; font-size: 0.82rem; }
 .vtable th { text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); }
@@ -132,7 +144,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp31</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp32</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -155,6 +167,11 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
   <div class="tabbar">
     <button class="tab cur" id="tabReplay">Replay</button>
     <button class="tab" id="tabGraphs">Graphs</button>
+    <button class="tab" id="tabLog">Log</button>
+  </div>
+  <div id="logView" class="hidden">
+    <div class="gsub">Every cell's full history in the dev-log notation: the small number above each mark is the serve gap (cards since that cell's previous serve), <span style="opacity:0.8">‖</span> is a same-day session break with its pause length, an accented <b>d.m.</b> marks a day change. Uses the Graphs tab's verb-type and verb selections.</div>
+    <div id="logGrid"></div>
   </div>
   <div id="replayView">
   <div class="controls">
@@ -572,11 +589,57 @@ document.getElementById('ghPw').addEventListener('keydown', ev=>{ if(ev.key==='E
 /* ---------- graphs: per-tense staircases ---------- */
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function showView(which) {
-  [['replay','replayView','tabReplay'],['graphs','graphsView','tabGraphs']].forEach(([k,v,t])=>{
+  [['replay','replayView','tabReplay'],['graphs','graphsView','tabGraphs'],['log','logView','tabLog']].forEach(([k,v,t])=>{
     document.getElementById(v).classList.toggle('hidden', which!==k);
     document.getElementById(t).classList.toggle('cur', which===k);
   });
   if(which==='graphs') { populateScope(); renderGraphs(); }
+  if(which==='log') { populateScope(); renderLog(); }
+}
+function devStripHtml(hist) {
+  let out='';
+  hist.forEach((h,i)=>{
+    if(i>0) {
+      const dt=h.ts-hist[i-1].ts;
+      if(dt>30*60*1000) {
+        const dayChanged=new Date(h.ts).toDateString()!==new Date(hist[i-1].ts).toDateString();
+        const lbl = dt>=48*3600*1000 ? Math.round(dt/86400000)+'d' : dt>=90*60*1000 ? Math.round(dt/3600000)+'h' : Math.round(dt/60000)+'m';
+        const d=new Date(h.ts);
+        out+='<span class="dh-col dh-sep'+(dayChanged?' dh-day':'')+'"><i>'+lbl+'</i><span>'+(dayChanged?(d.getDate()+'.'+(d.getMonth()+1)+'.'):'\u2016')+'</span></span>';
+      }
+    }
+    out+='<span class="dh-col"><i>'+(h.gap==null?'\u00b7':h.gap)+'</i>'+(h.r===1?'<span class="dh-ok">\u2713</span>':'<span class="dh-x">\u2717</span>')+'</span>';
+  });
+  return out;
+}
+function renderLog() {
+  let data=graphData();
+  if(selVerbs.length) data=data.filter(e=>selVerbs.indexOf(e.v)!==-1);
+  const grid=document.getElementById('logGrid');
+  if(!data.length) { grid.innerHTML='<div class="gsub">no answers in scope</div>'; return; }
+  // per-cell histories with gaps measured in the filtered stream (app semantics)
+  const cellHist={}, lastIdx={};
+  data.forEach((e,i)=>{
+    const key=e.g+'|'+e.tn+'|'+(e.p==null?0:e.p);
+    (cellHist[key]=cellHist[key]||[]).push({r:e.r, ts:e.ts, gap: lastIdx[key]==null?null:(i-lastIdx[key]-1)});
+    lastIdx[key]=i;
+  });
+  const gids=[...new Set(data.map(e=>e.g))];
+  let h='';
+  gids.forEach(g=>{
+    const tenses=TENSES.filter(tn=>Object.keys(cellHist).some(k=>k.indexOf(g+'|'+tn+'|')===0));
+    tenses.forEach(tn=>{
+      h+='<div class="logsec"><h3>'+escHtml((GID_LABEL[g]||g)+' \u00b7 '+(TLABEL[tn]||tn))+(selVerbs.length?' \u00b7 '+selVerbs.map(escHtml).join('+'):'')+'</h3>';
+      const labels = tn==='infinitive' ? ['\u2014'] : (tn.indexOf('imperative')===0 ? IMP_PERSONS.slice(0,5) : PERSONS);
+      labels.forEach((lbl,p)=>{
+        const hist=cellHist[g+'|'+tn+'|'+p];
+        if(!hist) return;
+        h+='<div class="logrow"><span class="llbl">'+escHtml(lbl)+' \u00b7 '+hist.length+'</span><span class="dev-hist">'+devStripHtml(hist)+'</span></div>';
+      });
+      h+='</div>';
+    });
+  });
+  grid.innerHTML=h;
 }
 
 /* ---------- verb transfer view ---------- */
@@ -1004,6 +1067,7 @@ function drawPerf(cvId, seriesList, height) {
 
 document.getElementById('tabReplay').addEventListener('click', ()=>showView('replay'));
 document.getElementById('tabGraphs').addEventListener('click', ()=>showView('graphs'));
+document.getElementById('tabLog').addEventListener('click', ()=>showView('log'));
 document.getElementById('vNewest').addEventListener('click', ()=>{ selVerbs=newestVerbs(4); renderGraphs(); });
 document.getElementById('vClear').addEventListener('click', ()=>{ selVerbs=[]; renderGraphs(); });
 document.getElementById('gScope').addEventListener('change', renderGraphs);
