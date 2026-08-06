@@ -132,7 +132,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp26</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp28</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -231,12 +231,12 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
     <div class="vpick" id="vPick"></div>
-    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them (dashed) on the tense panels — the existing curves and their scale are untouched; the verbs read on their own right-hand scale (so a 20-answer verb isn't flattened by a 300-answer tense), each dot is one real attempt, and flat stretches are spells where that verb wasn't served.
+    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them (dashed) on the tense panels — the existing curves and their scale are untouched; the verbs read on their own right-hand scale (so a 20-answer verb isn't flattened by a 300-answer tense), each dot is one real attempt, flat stretches are spells where that verb wasn't served, and each verb carries its own faint dashed 90%-pace reference across its serve span.
       <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
       <button class="ctl" id="vClear">clear</button>
     </div>
     <div id="stairWrap">
-    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers, flat = a wrong (red tick) · per-attempt mode: grey dash = perfect run, green dashes = the 90% target slope (a healthy curve runs parallel to them) · calendar mode: x is real time, idle gaps compressed to a dashed break · full-height dashed rules mark where a new stage began (labelled when enlarged) · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
+    <div class="gsub" style="margin:-4px 0 10px">One graph per tense/mood · y counts correct answers, rising = corrects, flat = a wrong (red tick) · per-attempt mode: grey dash = perfect run, green dashes = the 90% target slope (a healthy curve runs parallel to them) · calendar mode: x is real time, idle gaps compressed to a dashed break · full-height dashed rules mark where a new stage began (labelled when enlarged) · faint bars under the line = each answer's interval (earned or observed — taller = longer spacing) · the colored dots along the bottom edge mark the practice context (see legend) · <b>click a tense to overlay its yo / tú / él… lines</b></div>
     <div class="plegend" id="kindLegend" style="margin:-2px 0 10px"></div>
     <div class="stairs" id="stairGrid"></div>
     <div class="vtable" id="vTable"></div>
@@ -924,7 +924,6 @@ function drawStair(cvId, attempts, height) {
   let prev=0;
   attempts.forEach((e,i)=>{
     const x = timeMode ? tx(e.ts) : X(i+1);
-    ctx.lineTo(x, Y(prev));
     ctx.lineTo(x, Y(vs[i]));
     if(e.r!==1) wrongXs.push(x);
     prev=vs[i];
@@ -947,9 +946,15 @@ function drawStair(cvId, attempts, height) {
       ctx.beginPath();
       ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Yv(0));
       let pv=0;
-      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Yv(pv)); ctx.lineTo(x, Yv(p.v)); pv=p.v; });
+      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Yv(p.v)); pv=p.v; });
       ctx.stroke();
       ctx.setLineDash([]);
+      // this verb's own 90% pace: straight line across its serve span on its scale
+      const xa = timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i);
+      const xb = timeMode ? tx(s.pts[s.pts.length-1].e.ts) : X(s.pts[s.pts.length-1].i+1);
+      ctx.globalAlpha=0.3; ctx.setLineDash([2,3]); ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(xa, Yv(0)); ctx.lineTo(xb, Yv(0.9*s.pts.length)); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha=1; ctx.lineWidth=(H>260?2.2:1.6);
       ctx.fillStyle=s.color;
       a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.beginPath(); ctx.arc(x, Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });   // a dot per real attempt
     });
@@ -998,13 +1003,16 @@ function drawStairMulti(cvId, attempts, series, height) {
   } else {
     ctx.fillStyle=muted; ctx.textAlign='center';
     ctx.fillText(N+' attempts in this tense', padL+iw/2, H-3);
-    // angled 90% guide grid, same as the single-line panels
+    // 90% guide grid, corrected for the person view: each person sees only
+    // ~1/nth of the cards, so a healthy person line climbs 0.9/n per tense
+    // attempt - guides at raw 0.9 were ~6x too steep here.
+    const gSlope=0.9/Math.max(1, series.length);
     ctx.save();
     ctx.beginPath(); ctx.rect(padL, padT, iw, ih); ctx.clip();
     ctx.strokeStyle=good; ctx.globalAlpha=0.13; ctx.setLineDash([2,4]); ctx.lineWidth=1;
     const dA=Math.max(2, N/6);
-    for(let a=-Math.ceil((hi/0.9)/dA)*dA; a<N; a+=dA) {
-      ctx.beginPath(); ctx.moveTo(X(a), Y(0)); ctx.lineTo(X(N), Y(0.9*(N-a))); ctx.stroke();
+    for(let a=-Math.ceil((hi/gSlope)/dA)*dA; a<N; a+=dA) {
+      ctx.beginPath(); ctx.moveTo(X(a), Y(0)); ctx.lineTo(X(N), Y(gSlope*(N-a))); ctx.stroke();
     }
     ctx.restore();
     ctx.setLineDash([]); ctx.globalAlpha=1;
@@ -1031,7 +1039,7 @@ function drawStairMulti(cvId, attempts, series, height) {
     let prev=0;
     a.forEach(p=>{
       const x=(timeMode ? tx(p.e.ts) : X(p.i+1))+off;
-      ctx.lineTo(x, Y(prev)); ctx.lineTo(x, Y(p.v));
+      ctx.lineTo(x, Y(p.v));
       prev=p.v;
     });
     ctx.stroke();
@@ -1051,9 +1059,14 @@ function drawStairMulti(cvId, attempts, series, height) {
       ctx.beginPath();
       ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Yv(0));
       let pv=0;
-      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Yv(pv)); ctx.lineTo(x, Yv(p.v)); pv=p.v; });
+      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Yv(p.v)); pv=p.v; });
       ctx.stroke();
       ctx.setLineDash([]);
+      const xa2 = timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i);
+      const xb2 = timeMode ? tx(s.pts[s.pts.length-1].e.ts) : X(s.pts[s.pts.length-1].i+1);
+      ctx.globalAlpha=0.3; ctx.setLineDash([2,3]); ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(xa2, Yv(0)); ctx.lineTo(xb2, Yv(0.9*s.pts.length)); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha=1; ctx.lineWidth=2.2;
       ctx.fillStyle=s.color;
       a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.beginPath(); ctx.arc(x, Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });
     });
