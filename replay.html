@@ -132,7 +132,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
 </style>
 
 <div class="topbar">
-  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp28</span></small></h1>
+  <h1>Conjuga · Replay<small>answer-by-answer heat map per verb type · <span style="opacity:0.5">rp29</span></small></h1>
   <span id="srcStatus">no data loaded</span>
 </div>
 
@@ -231,7 +231,7 @@ table.matrix { border-collapse: separate; border-spacing: 5px; width: 100%; min-
       <label class="chk"><input type="checkbox" id="gPower"> include power practice</label>
     </div>
     <div class="vpick" id="vPick"></div>
-    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them (dashed) on the tense panels — the existing curves and their scale are untouched; the verbs read on their own right-hand scale (so a 20-answer verb isn't flattened by a 300-answer tense), each dot is one real attempt, flat stretches are spells where that verb wasn't served, and each verb carries its own faint dashed 90%-pace reference across its serve span.
+    <div class="gsub" style="margin:-4px 0 10px">Pick verbs above to overlay them (dashed) on the tense panels — the existing curves and their scale are untouched; overlaid verbs and person lines advance one x-unit per own answer (flat unit = wrong, rising unit = correct), anchored where they first entered the tense; verbs read on their own right-hand scale with a faint dashed 90%-pace reference; each dot is one real attempt.
       <button class="ctl" id="vNewest" style="margin-left:8px">newest 4</button>
       <button class="ctl" id="vClear">clear</button>
     </div>
@@ -941,22 +941,21 @@ function drawStair(cvId, attempts, height) {
     ctx.save(); ctx.beginPath(); ctx.rect(padL,padT,iw,ih); ctx.clip();
     vsel.forEach((s,si)=>{
       const a=vseries[si];
+      const x0=s.pts[0].i;                                  // entry anchor (chronological)
+      const vx=k=> timeMode ? tx(a[Math.min(k,a.length-1)].e.ts) : X(x0+k);   // one unit per own answer
       ctx.setLineDash([5,3]);
       ctx.strokeStyle=s.color; ctx.lineWidth=(H>260?2.2:1.6);
       ctx.beginPath();
-      ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Yv(0));
-      let pv=0;
-      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Yv(p.v)); pv=p.v; });
+      ctx.moveTo(vx(0)- (timeMode?0:iw/Math.max(1,N)), Yv(0));
+      a.forEach((p,k)=>{ ctx.lineTo(vx(k), Yv(p.v)); });    // wrong = flat unit, correct = rising unit
       ctx.stroke();
       ctx.setLineDash([]);
-      // this verb's own 90% pace: straight line across its serve span on its scale
-      const xa = timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i);
-      const xb = timeMode ? tx(s.pts[s.pts.length-1].e.ts) : X(s.pts[s.pts.length-1].i+1);
+      // this verb's own 90% pace across its compressed span
       ctx.globalAlpha=0.3; ctx.setLineDash([2,3]); ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(xa, Yv(0)); ctx.lineTo(xb, Yv(0.9*s.pts.length)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(vx(0)-(timeMode?0:iw/Math.max(1,N)), Yv(0)); ctx.lineTo(vx(a.length-1), Yv(0.9*a.length)); ctx.stroke();
       ctx.setLineDash([]); ctx.globalAlpha=1; ctx.lineWidth=(H>260?2.2:1.6);
       ctx.fillStyle=s.color;
-      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.beginPath(); ctx.arc(x, Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });   // a dot per real attempt
+      a.forEach((p,k)=>{ ctx.beginPath(); ctx.arc(vx(k), Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });
     });
     ctx.restore();
     ctx.fillStyle=muted; ctx.textAlign='right';
@@ -1003,10 +1002,8 @@ function drawStairMulti(cvId, attempts, series, height) {
   } else {
     ctx.fillStyle=muted; ctx.textAlign='center';
     ctx.fillText(N+' attempts in this tense', padL+iw/2, H-3);
-    // 90% guide grid, corrected for the person view: each person sees only
-    // ~1/nth of the cards, so a healthy person line climbs 0.9/n per tense
-    // attempt - guides at raw 0.9 were ~6x too steep here.
-    const gSlope=0.9/Math.max(1, series.length);
+    // with one x-unit per own answer, a healthy line climbs 0.9 per unit again
+    const gSlope=0.9;
     ctx.save();
     ctx.beginPath(); ctx.rect(padL, padT, iw, ih); ctx.clip();
     ctx.strokeStyle=good; ctx.globalAlpha=0.13; ctx.setLineDash([2,4]); ctx.lineWidth=1;
@@ -1033,18 +1030,16 @@ function drawStairMulti(cvId, attempts, series, height) {
     const off=(si-(series.length-1)/2)*2.5;
     const a=vseries[si];
     if(!a.length) return;
+    const x0=s.pts[0].i;
+    const px=k=> (timeMode ? tx(a[Math.min(k,a.length-1)].e.ts) : X(x0+k))+off;   // one unit per own answer
     ctx.strokeStyle=s.color; ctx.lineWidth=1.7;
     ctx.beginPath();
-    ctx.moveTo((timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i))+off, Y(0));
+    ctx.moveTo(px(0)-(timeMode?0:iw/Math.max(1,N)), Y(0));
     let prev=0;
-    a.forEach(p=>{
-      const x=(timeMode ? tx(p.e.ts) : X(p.i+1))+off;
-      ctx.lineTo(x, Y(p.v));
-      prev=p.v;
-    });
+    a.forEach((p,k)=>{ ctx.lineTo(px(k), Y(p.v)); prev=p.v; });
     ctx.stroke();
     ctx.fillStyle=s.color;
-    ctx.beginPath(); ctx.arc((timeMode ? tx(a[a.length-1].e.ts) : X(a[a.length-1].i+1))+off, Y(prev), 2.8, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(px(a.length-1), Y(prev), 2.8, 0, 7); ctx.fill();
   });
   // picked verbs on top of the person lines: same axes and scale, clipped
   if(vsel.length) {
@@ -1054,21 +1049,20 @@ function drawStairMulti(cvId, attempts, series, height) {
     vsel.forEach((s,si)=>{
       const a=vv[si];
       if(!a.length) return;
+      const x0=s.pts[0].i;
+      const vx2=k=> timeMode ? tx(a[Math.min(k,a.length-1)].e.ts) : X(x0+k);
       ctx.setLineDash([5,3]);
       ctx.strokeStyle=s.color; ctx.lineWidth=2.2;
       ctx.beginPath();
-      ctx.moveTo(timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i), Yv(0));
-      let pv=0;
-      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.lineTo(x, Yv(p.v)); pv=p.v; });
+      ctx.moveTo(vx2(0)-(timeMode?0:iw/Math.max(1,N)), Yv(0));
+      a.forEach((p,k)=>{ ctx.lineTo(vx2(k), Yv(p.v)); });
       ctx.stroke();
       ctx.setLineDash([]);
-      const xa2 = timeMode ? tx(s.pts[0].e.ts) : X(s.pts[0].i);
-      const xb2 = timeMode ? tx(s.pts[s.pts.length-1].e.ts) : X(s.pts[s.pts.length-1].i+1);
       ctx.globalAlpha=0.3; ctx.setLineDash([2,3]); ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(xa2, Yv(0)); ctx.lineTo(xb2, Yv(0.9*s.pts.length)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(vx2(0)-(timeMode?0:iw/Math.max(1,N)), Yv(0)); ctx.lineTo(vx2(a.length-1), Yv(0.9*a.length)); ctx.stroke();
       ctx.setLineDash([]); ctx.globalAlpha=1; ctx.lineWidth=2.2;
       ctx.fillStyle=s.color;
-      a.forEach(p=>{ const x = timeMode ? tx(p.e.ts) : X(p.i+1); ctx.beginPath(); ctx.arc(x, Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });
+      a.forEach((p,k)=>{ ctx.beginPath(); ctx.arc(vx2(k), Yv(p.v), p.e.r===1?2:2.6, 0, 7); ctx.fill(); });
     });
     ctx.restore();
     ctx.fillStyle=muted; ctx.textAlign='right';
