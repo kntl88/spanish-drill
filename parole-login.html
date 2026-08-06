@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Parole — Accedi</title>
+<style>
+:root { --bg:#f7f3ea; --surface:#fffdf7; --border:#e4dcc9; --text:#2b2620; --dim:#8a8071; --accent:#2f7d4f; --err:#b0433a; --ok:#3A7A56; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#191b1e; --surface:#22252a; --border:#33373d; --text:#e8e4da; --dim:#8d8778; --accent:#5db97f; --err:#d4736a; --ok:#5CA87A; }
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:Georgia,'Times New Roman',serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+.login { width:100%; max-width:340px; padding:24px; }
+.login h1 { font-size:2.2rem; text-align:center; margin-bottom:4px; }
+.login h1 span { color:var(--accent); }
+.sub { text-align:center; color:var(--dim); font-size:0.85rem; margin-bottom:22px; }
+.login input { width:100%; padding:12px 14px; margin-bottom:10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); font-size:0.95rem; outline:none; font-family:inherit; }
+.login input:focus { border-color:var(--accent); }
+.login input::placeholder { color:var(--dim); }
+button { width:100%; padding:12px; border:none; border-radius:8px; background:var(--accent); color:#fff; font-size:0.95rem; font-weight:600; cursor:pointer; font-family:inherit; }
+.status { text-align:center; font-size:0.82rem; margin-top:14px; min-height:1.2em; color:var(--dim); }
+.status.err { color:var(--err); }
+.status.ok { color:var(--ok); }
+.note { text-align:center; font-size:0.72rem; color:var(--dim); margin-top:20px; line-height:1.5; }
+</style>
+</head>
+<body>
+<div class="login">
+    <h1>Parole<span>.</span></h1>
+    <div class="sub">Italian words &amp; phrases</div>
+    <input id="user" type="text" placeholder="Username" autocomplete="username" autofocus>
+    <input id="pw" type="password" placeholder="Password" autocomplete="current-password"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Accedi</button>
+    <div class="status" id="status"></div>
+    <div class="note">Same account as Conjuga — accounts are created by the administrator.<br>Your progress syncs automatically while you practice.</div>
+</div>
+
+<script>
+const GH_OWNER = 'kntl88';
+const GH_PUBLIC_REPO = 'spanish-drill';
+const VAULT_PATH = 'conjuga-vaults.json';   // one vault, both apps
+const APP_PATH = 'parole.html';
+const SALT_LEN = 16, IV_LEN = 12, PBKDF2_ITER = 310000;
+
+function setStatus(msg, type) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = 'status' + (type ? ' ' + type : '');
+}
+
+async function deriveKey(pw, salt) {
+    const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name:'PBKDF2', salt, iterations:PBKDF2_ITER, hash:'SHA-256' },
+        km, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']
+    );
+}
+
+async function decrypt(b64, pw) {
+    const p = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    return new TextDecoder().decode(
+        await crypto.subtle.decrypt(
+            { name:'AES-GCM', iv:p.slice(SALT_LEN, SALT_LEN + IV_LEN) },
+            await deriveKey(pw, p.slice(0, SALT_LEN)),
+            p.slice(SALT_LEN + IV_LEN)
+        )
+    );
+}
+
+async function loadVaults() {
+    const cached = localStorage.getItem('cjVaults');
+    try {
+        const res = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_PUBLIC_REPO + '/contents/' + VAULT_PATH + '?t=' + Date.now(), {
+            headers: { 'Accept':'application/vnd.github.v3+json', 'If-None-Match':'' }, cache:'no-store'
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const vaults = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))));
+            localStorage.setItem('cjVaults', JSON.stringify(vaults));
+            return vaults;
+        }
+    } catch(e) {}
+    if (cached) return JSON.parse(cached);
+    throw new Error('Could not load account list');
+}
+
+async function doLogin() {
+    const user = document.getElementById('user').value.trim().toLowerCase();
+    const pw = document.getElementById('pw').value;
+    if (!user || !pw) { setStatus('Enter username and password', 'err'); return; }
+
+    setStatus('Checking…');
+    let vaults;
+    try { vaults = await loadVaults(); }
+    catch(e) { setStatus(e.message, 'err'); return; }
+
+    const entry = vaults[user];
+    if (!entry || !entry.encrypted) { setStatus('Unknown user', 'err'); return; }
+
+    let creds;
+    try { creds = JSON.parse(await decrypt(entry.encrypted, pw)); }
+    catch(e) { setStatus('Wrong password', 'err'); document.getElementById('pw').value=''; return; }
+
+    if (!creds.token) { setStatus('Corrupt account entry', 'err'); return; }
+
+    setStatus('Loading app…', 'ok');
+    try {
+        const res = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + (creds.repo || 'Spanish') + '/contents/' + APP_PATH + '?t=' + Date.now(), {
+            headers: { 'Authorization':'Bearer ' + creds.token, 'Accept':'application/vnd.github.v3+json', 'If-None-Match':'' }, cache:'no-store'
+        });
+        if (!res.ok) { setStatus('Failed to load app: ' + res.status, 'err'); return; }
+        const data = await res.json();
+        const html = decodeURIComponent(escape(atob(data.content.replace(/\n/g, ''))));
+        const injection = '<script>' +
+            'window.__PL_TOKEN=' + JSON.stringify(creds.token) + ';' +
+            'window.__PL_USER=' + JSON.stringify(creds.user || user) + ';' +
+            'window.__PL_OWNER=' + JSON.stringify(GH_OWNER) + ';' +
+            'window.__PL_REPO=' + JSON.stringify(creds.repo || 'Spanish') + ';' +
+            '<\/script>';
+        document.open();
+        document.write(injection + html);
+        document.close();
+    } catch(e) {
+        setStatus('Launch failed: ' + e.message, 'err');
+    }
+}
+</script>
+</body>
+</html>
