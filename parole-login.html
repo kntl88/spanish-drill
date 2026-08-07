@@ -71,6 +71,12 @@ async function decrypt(b64, pw) {
 
 async function loadVaults() {
     const cached = localStorage.getItem('cjVaults');
+    // 1. the Pages CDN serves the vault file directly - same origin, no API rate limit
+    try {
+        const r = await fetch(VAULT_PATH + '?t=' + Date.now(), {cache:'no-store'});
+        if (r.ok) { const v = await r.json(); localStorage.setItem('cjVaults', JSON.stringify(v)); return v; }
+    } catch(e) {}
+    // 2. GitHub API fallback (unauthenticated, 60/hour/IP)
     try {
         const res = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_PUBLIC_REPO + '/contents/' + VAULT_PATH + '?t=' + Date.now(), {
             headers: { 'Accept':'application/vnd.github.v3+json', 'If-None-Match':'' }, cache:'no-store'
