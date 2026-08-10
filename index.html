@@ -193,6 +193,12 @@ async function ghFetch(owner, repo, token, path, opts = {}) {
 }
 
 async function loadVaultFromPublicRepo() {
+    // 1. the Pages CDN serves the vault file directly - same origin, no API rate limit
+    try {
+        const r = await fetch(VAULT_PATH + '?t=' + Date.now(), {cache: 'no-store'});
+        if (r.ok) return await r.json();
+    } catch(e) {}
+    // 2. GitHub API fallback (unauthenticated, 60/hour/IP)
     const res = await fetch('https://api.github.com/repos/' + GH_OWNER + '/' + GH_PUBLIC_REPO + '/contents/' + VAULT_PATH + '?t=' + Date.now(), {
         headers: { 'Accept': 'application/vnd.github.v3+json', 'If-None-Match': '' },
         cache: 'no-store'
