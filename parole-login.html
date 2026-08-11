@@ -28,7 +28,7 @@ button { width:100%; padding:12px; border:none; border-radius:8px; background:va
 <body>
 <div class="login">
     <h1>Parole<span>.</span></h1>
-    <div class="sub">Italian words &amp; phrases <span id="appver" style="opacity:0.6">· login v3</span></div>
+    <div class="sub">Italian words &amp; phrases <span id="appver" style="opacity:0.6">· login v4</span></div>
     <input id="user" type="text" placeholder="Username" autocomplete="username" autofocus>
     <input id="pw" type="password" placeholder="Password" autocomplete="current-password"
            onkeydown="if(event.key==='Enter')doLogin()">
@@ -43,6 +43,18 @@ const GH_PUBLIC_REPO = 'spanish-drill';
 const VAULT_PATH = 'conjuga-vaults.json';   // one vault, both apps
 const APP_PATH = 'parole.html';
 const SALT_LEN = 16, IV_LEN = 12, PBKDF2_ITER = 310000;
+
+// the served app version, always visible pre-login: a tiny public marker
+// updated with every Parole deploy
+(async function showAppVersion(){
+    try {
+        const r = await fetch('https://raw.githubusercontent.com/' + GH_OWNER + '/' + GH_PUBLIC_REPO + '/main/parole-version.txt?t=' + Date.now(), {cache:'no-store'});
+        if (r.ok) {
+            const v = (await r.text()).trim();
+            if (/^v\d+$/.test(v)) document.getElementById('appver').textContent = '\u00b7 login v4 \u00b7 app ' + v;
+        }
+    } catch(e) {}
+})();
 
 function setStatus(msg, type) {
     const el = document.getElementById('status');
