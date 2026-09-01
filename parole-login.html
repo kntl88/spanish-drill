@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
+<!-- Add to Home Screen runs the app WITHOUT Safari's address bar and bottom toolbar
+     (~130px of screen back on a phone). iOS reads these at launch, from THIS page,
+     before the app is written over it. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Parole">
+<meta name="theme-color" content="#191b1e">
 <title>Parole — Accedi</title>
 <style>
 :root { --bg:#f7f3ea; --surface:#fffdf7; --border:#e4dcc9; --text:#2b2620; --dim:#8a8071; --accent:#2f7d4f; --err:#b0433a; --ok:#3A7A56; }
