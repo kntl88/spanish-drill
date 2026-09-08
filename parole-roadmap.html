@@ -38,12 +38,13 @@ p b { color:var(--ink); }
 .paradigm-in { margin:14px 0; }
 .paradigm-in .rtab { margin:0 auto; }
 .tabs { margin:14px 0; }
-.tabbar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
-.tabbar button { font-family:inherit; font-size:.9em; padding:4px 12px; border-radius:9px; border:1px solid var(--line); background:none; color:var(--muted); cursor:pointer; }
-.tabbar button.on { color:var(--ink); border-color:var(--gold); }
+.tabbar { display:flex; flex-wrap:wrap; gap:0; margin-bottom:12px; }
+.tabbar button { font-family:'Inconsolata',ui-monospace,Menlo,Consolas,monospace; font-weight:300; font-size:.92rem; padding:4px 14px; border-radius:0; border:1px solid var(--line); margin:0 0 -1px -1px; background:none; color:var(--muted); cursor:pointer; }
+.tabbar button:first-child { margin-left:0; }
+.tabbar button.on { color:var(--ink); border-color:var(--gold); position:relative; z-index:1; }
 .tabpane[hidden] { display:none; }
 .tabs .tabs { margin:6px 0 0; }
-.tabs .tabs .tabbar button { font-size:.82em; padding:3px 10px; }
+.tabs .tabs .tabbar button { font-size:.85rem; padding:3px 12px; }
 .rfull td.kt { --kline:linear-gradient(var(--kc), var(--kc)); background-image:var(--kline), var(--kline) !important; background-repeat:no-repeat !important;
     background-size:2px 100%, 2px 100% !important; background-position:left 2px top 0, right 2px top 0 !important; }
 .rfull td.kt.kt-top { background-image:var(--kline), var(--kline), var(--kline) !important;
