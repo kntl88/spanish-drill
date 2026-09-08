@@ -42,10 +42,10 @@ p b { color:var(--ink); }
 .tabbar button { font-family:inherit; font-size:.9em; padding:4px 12px; border-radius:9px; border:1px solid var(--line); background:none; color:var(--muted); cursor:pointer; }
 .tabbar button.on { color:var(--ink); border-color:var(--gold); }
 .tabpane[hidden] { display:none; }
-.rfull td.kt { box-shadow:inset 2px 0 0 var(--kc), inset -2px 0 0 var(--kc); }
-.rfull td.kt.kt-top { box-shadow:inset 2px 0 0 var(--kc), inset -2px 0 0 var(--kc), inset 0 2px 0 var(--kc); }
-.rfull td.kt.kt-bot { box-shadow:inset 2px 0 0 var(--kc), inset -2px 0 0 var(--kc), inset 0 -2px 0 var(--kc); }
-.rfull td.kt.kt-top.kt-bot { box-shadow:inset 2px 0 0 var(--kc), inset -2px 0 0 var(--kc), inset 0 2px 0 var(--kc), inset 0 -2px 0 var(--kc); }
+.rfull td.kt { --kl:linear-gradient(to right, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px); --kr:linear-gradient(to left, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px);
+.rfull td.kt.kt-top { background-image:var(--kl), var(--kr), var(--ktp) !important; }
+.rfull td.kt.kt-bot { background-image:var(--kl), var(--kr), var(--kbt) !important; }
+.rfull td.kt.kt-top.kt-bot { background-image:var(--kl), var(--kr), var(--ktp), var(--kbt) !important; }
 .rfull td.kt-ok { --kc:var(--accent); } .rfull td.kt-done { --kc:var(--new); }   /* green: every form right in rehearsal; orange: the lesson done (v311.502) */
 .rfull td.c-ok, .rfull td.c-ok b { color:var(--accent); } .rfull td.c-bad, .rfull td.c-bad b { color:var(--wrong); }   /* a form right / wrong in rehearsal; plain = not in circulation */
 .sheet .rtab td { font-family:inherit; font-size:inherit; }   /* the rule box's face in every table: the sheet's Charter had won on the cells (v311.478, Pekka: 'you should be using the monospaced inconsolata in all the tables, because then the endings will align') */
