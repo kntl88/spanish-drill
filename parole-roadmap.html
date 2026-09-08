@@ -40,9 +40,10 @@ p b { color:var(--ink); }
 .tabbar button { font-family:inherit; font-size:.9em; padding:4px 12px; border-radius:9px; border:1px solid var(--line); background:none; color:var(--muted); cursor:pointer; }
 .tabbar button.on { color:var(--ink); border-color:var(--gold); }
 .tabpane[hidden] { display:none; }
-.rfull td.kt { border-left:2px solid var(--kc); border-right:2px solid var(--kc); }
-.rfull td.kt.kt-top { border-top:2px solid var(--kc); }
-.rfull td.kt.kt-bot { border-bottom:2px solid var(--kc); }
+.rfull td.kt { box-shadow:inset 2px 0 0 var(--kc), inset -2px 0 0 var(--kc); }
+.rfull td.kt.kt-top { box-shadow:inset 2px 0 0 var(--kc), inset -2px 0 0 var(--kc), inset 0 2px 0 var(--kc); }
+.rfull td.kt.kt-bot { box-shadow:inset 2px 0 0 var(--kc), inset -2px 0 0 var(--kc), inset 0 -2px 0 var(--kc); }
+.rfull td.kt.kt-top.kt-bot { box-shadow:inset 2px 0 0 var(--kc), inset -2px 0 0 var(--kc), inset 0 2px 0 var(--kc), inset 0 -2px 0 var(--kc); }
 .rfull td.kt-ok { --kc:var(--accent); }
 .sheet .rtab td { font-family:inherit; font-size:inherit; }   /* the rule box's face in every table: the sheet's Charter had won on the cells (v311.478, Pekka: 'you should be using the monospaced inconsolata in all the tables, because then the endings will align') */
 .sheet.paradigm .rfull, .paradigm-in .rfull { table-layout:fixed; }   /* the width is the columns' own (v311.500) */   /* fixed columns from a colgroup: the grid fits the sheet and keeps its size across the switch (v311.478, Pekka: 'the table does not fit the view ... there's a change in vertical padding ... noi takes up more space') */
