@@ -90,6 +90,11 @@ document.addEventListener('click', function(e){ var tb=e.target.closest('.tabbar
 // the arrows walk the menu: left and right the verbs of the open group, up and down the groups, both wrapping round
 document.addEventListener('keydown', function(e){ var outer=document.querySelector('.tabs'); if(!outer) return;
   if(e.key==='ArrowUp' || e.key==='ArrowDown'){ e.preventDefault(); pick(outer, cur(outer)+(e.key==='ArrowDown'?1:-1)); return; }
-  if(e.key==='ArrowLeft' || e.key==='ArrowRight'){ var pane=outer.querySelectorAll(':scope > .tabpane')[cur(outer)]; var inner=pane && pane.querySelector(':scope > .tabs'); if(!inner) return;
-    e.preventDefault(); pick(inner, cur(inner)+(e.key==='ArrowRight'?1:-1)); } });
+  if(e.key==='ArrowLeft' || e.key==='ArrowRight'){ e.preventDefault(); var d=e.key==='ArrowRight'?1:-1;
+    var g=cur(outer), panes=outer.querySelectorAll(':scope > .tabpane'), inner=panes[g] && panes[g].querySelector(':scope > .tabs'); if(!inner) return;
+    var i=cur(inner)+d, n=inner.querySelector(':scope > .tabbar').children.length;
+    if(i>=0 && i<n){ pick(inner, i); return; }
+    // past either end: the neighbouring group opens at its nearer end - one line of verbs, group after group
+    var ng=g+d, gn=panes.length; ng=((ng%gn)+gn)%gn; pick(outer, ng);
+    var next=panes[ng].querySelector(':scope > .tabs'); if(next) pick(next, d>0 ? 0 : next.querySelector(':scope > .tabbar').children.length-1); } });
 </script></body></html>
