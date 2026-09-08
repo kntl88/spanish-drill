@@ -86,10 +86,13 @@ function tabsLevel(root){ var top=root.querySelector('.tabs'); var panes=Array.p
   var boxes=Array.prototype.slice.call(root.querySelectorAll('.tabs')); boxes.forEach(function(b){ var bar=b.querySelector(':scope > .tabbar'); bar.style.minHeight=''; b.style.paddingBottom='';
     if(!b.classList.contains('fit')) bar.style.gridTemplateColumns = bar.children.length>10 ? 'repeat(8, 1fr)' : ''; });   // a long verb list packs eight to a line
   Array.prototype.forEach.call(root.querySelectorAll('.tabs.fit > .tabbar'), function(b){ b.style.gridTemplateColumns='repeat('+b.children.length+', 1fr)'; });
-  var hShape=0, hVerb=0; boxes.forEach(function(b){ if(b===top) return; var h=b.querySelector(':scope > .tabbar').offsetHeight; if(isLeafBox(b)) hVerb=Math.max(hVerb,h); else hShape=Math.max(hShape,h); });
+  // the shape rows share one height across the page; the verb rows share one height WITHIN THEIR GROUP only - the grid
+  // stands still while a group is browsed, and a short group keeps its grid close under the menu (Pekka: 'it's still far away')
+  var hShape=0; boxes.forEach(function(b){ if(b===top || isLeafBox(b)) return; hShape=Math.max(hShape, b.querySelector(':scope > .tabbar').offsetHeight); });
+  var groupOf=function(b){ var n=b; while(n && n.parentNode!==top) n=n.parentNode; return n; };
+  var hVerb={}; boxes.forEach(function(b){ if(b===top || !isLeafBox(b)) return; var gp=groupOf(b); var k=Array.prototype.indexOf.call(top.children, gp); hVerb[k]=Math.max(hVerb[k]||0, b.querySelector(':scope > .tabbar').offsetHeight); });
   panes.forEach(function(p,i){ p.hidden=hid[i]; });
-  boxes.forEach(function(b){ if(b===top) return; var bar=b.querySelector(':scope > .tabbar'); var leaf=isLeafBox(b); bar.style.minHeight=(leaf?hVerb:hShape)+'px';
-    if(leaf && b.parentNode.parentNode===top && hShape) b.style.paddingBottom=(hShape+4)+'px'; }); }   // a flat group: the shape row's room BELOW its verbs, between the menu and the grid, so the rows stay together (Pekka: 'longer gaps between the items')
+  boxes.forEach(function(b){ if(b===top) return; var bar=b.querySelector(':scope > .tabbar'); if(isLeafBox(b)){ var k=Array.prototype.indexOf.call(top.children, groupOf(b)); bar.style.minHeight=(hVerb[k]||0)+'px'; } else bar.style.minHeight=hShape+'px'; }); }
 tabsLevel(document); window.addEventListener('resize', function(){ tabsLevel(document); });
 // THE MENU: three rows - group, shape, verb. The cursor (gold tint) is apart from the selection (gold edge). On a
 // row whose items open further rows, the cursor OPENS what it passes, choosing nothing below; on the verb row it
