@@ -26,6 +26,7 @@ p b { color:var(--ink); }
 .tabbar button.focus { background:color-mix(in srgb, var(--gold) 16%, transparent); color:var(--ink); }   /* the cursor, apart from the gold-edged selection */
 .tabbar { margin-bottom:6px; } .tabpane > .paradigm-in { margin-top:2px; }   /* the grid close under the menu (Pekka) */
 .tabbar button:focus { outline:none; }
+.spk.mute { opacity:.25; cursor:default; }   /* no clip for this form */
 .rfull u.st { text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:3px; }   /* the stressed vowel (Pekka: 'can that be shown in pronunciation?') */
 .sheet table td { padding:3px 8px; line-height:1.45; text-align:left; }
 .rfull .rsec td { text-transform:uppercase; letter-spacing:.12em; font-size:.9em; color:var(--muted); padding:28px 0 10px; background:none !important; text-align:center; }
@@ -135,4 +136,10 @@ document.addEventListener('keydown', function(e){ if(!document.querySelector('.t
   else if(e.key==='ArrowLeft'){ e.preventDefault(); horizontal(-1); } else if(e.key==='ArrowRight'){ e.preventDefault(); horizontal(1); }
   else if(e.key==='Enter' || e.key===' '){ e.preventDefault(); vertical(1); } });
 document.addEventListener('click', function(e){ var tb=e.target.closest('.tabbar button'); if(tb) land(tb); });
+var HAVE={}; [].forEach(function(h){ HAVE[h]=1; });
+function sha1hex(t){ return crypto.subtle.digest('SHA-1', new TextEncoder().encode(t.normalize('NFC'))).then(function(b){ return Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0'+x.toString(16)).slice(-2); }).join(''); }); }
+var clips={};
+Array.prototype.forEach.call(document.querySelectorAll('.spk'), function(b){ sha1hex(b.getAttribute('data-say')||'').then(function(h){ b.dataset.h=h; if(!HAVE[h]) b.classList.add('mute'); }); });
+document.addEventListener('click', function(e){ var b=e.target.closest('.spk'); if(!b) return; e.preventDefault(); var h=b.dataset.h; if(!h || !HAVE[h]) return;
+  var a=clips[h] || (clips[h]=new Audio('parole-audio/'+h+'.mp3')); a.currentTime=0; a.play().catch(function(){}); });
 </script></body></html>
