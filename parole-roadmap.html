@@ -81,8 +81,15 @@ function tabsLevel(root){ root.querySelectorAll('.tabs').forEach(function(box){ 
   var h=Math.max.apply(null, bars.map(function(b){ return b.offsetHeight; })); panes.forEach(function(p,i){ p.hidden=hid[i]; });
   if(h>0) bars.forEach(function(b){ b.style.minHeight=h+'px'; }); }); }
 tabsLevel(document); window.addEventListener('resize', function(){ tabsLevel(document); });
-document.addEventListener('click', function(e){ var tb=e.target.closest('.tabbar button'); if(!tb) return;
-  var bar=tb.parentNode, box=bar.parentNode, i=Array.prototype.indexOf.call(bar.children, tb);
+function pick(box, i){ var bar=box.querySelector(':scope > .tabbar'), n=bar.children.length; i=((i%n)+n)%n;
   Array.prototype.forEach.call(bar.children, function(b,j){ b.classList.toggle('on', j===i); });
-  Array.prototype.forEach.call(box.querySelectorAll(':scope > .tabpane'), function(p,j){ p.hidden=j!==i; }); });
+  Array.prototype.forEach.call(box.querySelectorAll(':scope > .tabpane'), function(p,j){ p.hidden=j!==i; }); }
+function cur(box){ var bar=box.querySelector(':scope > .tabbar'); return Array.prototype.findIndex.call(bar.children, function(b){ return b.classList.contains('on'); }); }
+document.addEventListener('click', function(e){ var tb=e.target.closest('.tabbar button'); if(!tb) return;
+  var bar=tb.parentNode; pick(bar.parentNode, Array.prototype.indexOf.call(bar.children, tb)); });
+// the arrows walk the menu: left and right the verbs of the open group, up and down the groups, both wrapping round
+document.addEventListener('keydown', function(e){ var outer=document.querySelector('.tabs'); if(!outer) return;
+  if(e.key==='ArrowUp' || e.key==='ArrowDown'){ e.preventDefault(); pick(outer, cur(outer)+(e.key==='ArrowDown'?1:-1)); return; }
+  if(e.key==='ArrowLeft' || e.key==='ArrowRight'){ var pane=outer.querySelectorAll(':scope > .tabpane')[cur(outer)]; var inner=pane && pane.querySelector(':scope > .tabs'); if(!inner) return;
+    e.preventDefault(); pick(inner, cur(inner)+(e.key==='ArrowRight'?1:-1)); } });
 </script></body></html>
