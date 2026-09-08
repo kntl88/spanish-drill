@@ -82,13 +82,13 @@ p b { color:var(--ink); }
 // group's verb row is pushed down by a shape row's worth so the grid stands still whichever group is open.
 function isLeafBox(box){ return !Array.prototype.some.call(box.querySelectorAll(':scope > .tabpane'), function(p){ return p.querySelector(':scope > .tabs'); }); }
 function tabsLevel(root){ var top=root.querySelector('.tabs'); var panes=Array.prototype.slice.call(root.querySelectorAll('.tabpane')); var hid=panes.map(function(p){ return p.hidden; }); panes.forEach(function(p){ p.hidden=false; });
-  var boxes=Array.prototype.slice.call(root.querySelectorAll('.tabs')); boxes.forEach(function(b){ var bar=b.querySelector(':scope > .tabbar'); bar.style.minHeight=''; b.style.paddingTop='';
+  var boxes=Array.prototype.slice.call(root.querySelectorAll('.tabs')); boxes.forEach(function(b){ var bar=b.querySelector(':scope > .tabbar'); bar.style.minHeight=''; b.style.paddingBottom='';
     if(!b.classList.contains('fit')) bar.style.gridTemplateColumns = bar.children.length>10 ? 'repeat(8, 1fr)' : ''; });   // a long verb list packs eight to a line
   Array.prototype.forEach.call(root.querySelectorAll('.tabs.fit > .tabbar'), function(b){ b.style.gridTemplateColumns='repeat('+b.children.length+', 1fr)'; });
   var hShape=0, hVerb=0; boxes.forEach(function(b){ if(b===top) return; var h=b.querySelector(':scope > .tabbar').offsetHeight; if(isLeafBox(b)) hVerb=Math.max(hVerb,h); else hShape=Math.max(hShape,h); });
   panes.forEach(function(p,i){ p.hidden=hid[i]; });
   boxes.forEach(function(b){ if(b===top) return; var bar=b.querySelector(':scope > .tabbar'); var leaf=isLeafBox(b); bar.style.minHeight=(leaf?hVerb:hShape)+'px';
-    if(leaf && b.parentNode.parentNode===top && hShape) b.style.paddingTop=(hShape+4)+'px'; }); }   // a flat group: the shape row's room above its verbs
+    if(leaf && b.parentNode.parentNode===top && hShape) b.style.paddingBottom=(hShape+4)+'px'; }); }   // a flat group: the shape row's room BELOW its verbs, between the menu and the grid, so the rows stay together (Pekka: 'longer gaps between the items')
 tabsLevel(document); window.addEventListener('resize', function(){ tabsLevel(document); });
 // THE MENU: three rows - group, shape, verb. The cursor (gold tint) is apart from the selection (gold edge). On a
 // row whose items open further rows, the cursor OPENS what it passes, choosing nothing below; on the verb row it
