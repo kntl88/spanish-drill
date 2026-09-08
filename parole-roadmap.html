@@ -24,38 +24,43 @@ p b { color:var(--ink); }
 .legend span.done { border-color:var(--new); color:var(--ink); }
 .legend span.tok { color:var(--accent); } .legend span.tbad { color:var(--wrong); }
 .sheet table td { padding:3px 8px; line-height:1.45; text-align:left; }
-.rfull .rsec td { text-transform:uppercase; letter-spacing:.12em; font-size:.9em; color:var(--muted); padding:28px 0 10px; background:none !important; text-align:center; }   /* centred, larger, with air above (v311.462) */
+.rfull .rsec td { text-transform:uppercase; letter-spacing:.12em; font-size:.9em; color:var(--muted); padding:28px 0 10px; background:none !important; text-align:center; }
 .rfull tr:first-child .rsec td, .rfull .rsec:first-child td { padding-top:6px; }
 .rfull .rth { color:var(--muted); font-size:.85em; padding-bottom:4px; background:none !important; }
 .rfull .rper { color:var(--muted); background:none !important; }
 .rfull tr:first-child .rsec td { padding-top:0; }
-.rfull tr.rsec td:first-child { text-align:center; padding-right:0; }   /* the spanning header cell is a first child: the persons' right-alignment must not win (v311.469, Pekka: 'centered with respect to the screen, not the last cell') */
-.spk { background:none; border:none; padding:0 0 0 14px; margin:0; float:right; font-size:0.95em; line-height:inherit; color:var(--muted); cursor:pointer; opacity:.7; }   /* a small play mark at the cell's right edge; the cell never wraps (v311.461) */
+.rfull tr.rsec td:first-child { text-align:center; padding-right:0; }
+.spk { background:none; border:none; padding:0 0 0 14px; margin:0; float:right; font-size:0.95em; line-height:inherit; color:var(--muted); cursor:pointer; opacity:.7; }
 .rtab td { white-space:nowrap; }
 .spk:hover { opacity:1; color:var(--accent); }
-.spk.spk-l { float:none; padding:0 8px 0 0; }   /* before the word (v311.474) */
+.spk.spk-l { float:none; padding:0 8px 0 0; }
 .rtab td, .sheet table td { min-width:0; }
-.paradigm-in { margin:14px 0; }   /* the every-tense grid inside a lesson page (v311.477) */
+.paradigm-in { margin:14px 0; }
 .paradigm-in .rtab { margin:0 auto; }
 .tabs { margin:14px 0; }
 .tabbar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
 .tabbar button { font-family:inherit; font-size:.9em; padding:4px 12px; border-radius:9px; border:1px solid var(--line); background:none; color:var(--muted); cursor:pointer; }
 .tabbar button.on { color:var(--ink); border-color:var(--gold); }
 .tabpane[hidden] { display:none; }
-.tabs .tabs { margin:6px 0 0; } .tabs .tabs .tabbar button { font-size:.82em; padding:3px 10px; }   /* a group's own verbs, one size down (v311.504) */
+.tabs .tabs { margin:6px 0 0; }
+.tabs .tabs .tabbar button { font-size:.82em; padding:3px 10px; }
 .rfull td.kt { --kl:linear-gradient(to right, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px); --kr:linear-gradient(to left, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px);
+    --ktp:linear-gradient(to bottom, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px); --kbt:linear-gradient(to top, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px);
+    background-image:var(--kl), var(--kr) !important; }
 .rfull td.kt.kt-top { background-image:var(--kl), var(--kr), var(--ktp) !important; }
 .rfull td.kt.kt-bot { background-image:var(--kl), var(--kr), var(--kbt) !important; }
 .rfull td.kt.kt-top.kt-bot { background-image:var(--kl), var(--kr), var(--ktp), var(--kbt) !important; }
-.rfull td.kt-ok { --kc:var(--accent); } .rfull td.kt-done { --kc:var(--new); }   /* green: every form right in rehearsal; orange: the lesson done (v311.502) */
-.rfull td.c-ok, .rfull td.c-ok b { color:var(--accent); } .rfull td.c-bad, .rfull td.c-bad b { color:var(--wrong); }   /* a form right / wrong in rehearsal; plain = not in circulation */
-.sheet .rtab td { font-family:inherit; font-size:inherit; }   /* the rule box's face in every table: the sheet's Charter had won on the cells (v311.478, Pekka: 'you should be using the monospaced inconsolata in all the tables, because then the endings will align') */
-.sheet.paradigm .rfull, .paradigm-in .rfull { table-layout:fixed; }   /* the width is the columns' own (v311.500) */   /* fixed columns from a colgroup: the grid fits the sheet and keeps its size across the switch (v311.478, Pekka: 'the table does not fit the view ... there's a change in vertical padding ... noi takes up more space') */
+.rfull td.kt-ok { --kc:var(--accent); }
+.rfull td.kt-done { --kc:var(--new); }
+.rfull td.c-ok, .rfull td.c-ok b { color:var(--accent) !important; }
+.rfull td.c-bad, .rfull td.c-bad b { color:var(--wrong) !important; }
+.sheet .rtab td { font-family:inherit; font-size:inherit; }
+.sheet.paradigm .rfull, .paradigm-in .rfull { table-layout:fixed; }
 .sheet.paradigm .rfull td, .paradigm-in .rfull td { overflow:hidden; padding:3px 8px; }
-.sheet.paradigm .rfull .rsec td, .paradigm-in .rfull .rsec td { padding:30px 0 10px; }   /* air above SUBJUNCTIVE and IMPERATIVE: the cell rule above had swallowed the heading's own padding (v311.500, Pekka) */
+.sheet.paradigm .rfull .rsec td, .paradigm-in .rfull .rsec td { padding:30px 0 10px; }
 .sheet.paradigm .rfull .rsec:first-child td, .paradigm-in .rfull .rsec:first-child td { padding-top:6px; }
 .sheet.paradigm .rfull .spk, .paradigm-in .rfull .spk { padding-left:6px; }
-.rtab, .sheet table.rtab { margin:8px 0 6px; font-size:0.92rem; width:auto; border:none; font-family:'Inconsolata',ui-monospace,Menlo,Consolas,monospace; font-weight:300; }   /* one absolute size everywhere - the rule card's (v311.460) */   /* never the sheet's full width: the pronouns sit by the forms (v311.408); Inconsolata, light (v311.457) */
+.rtab, .sheet table.rtab { margin:8px 0 6px; font-size:0.92rem; width:auto; border:none; font-family:'Inconsolata',ui-monospace,Menlo,Consolas,monospace; font-weight:300; }
 .rtab td:first-child { text-align:right; padding-right:14px; }
 .rtab b { font-weight:300; }
 .rtab td, .sheet table.rtab td { padding:3px 12px; line-height:1.45; white-space:nowrap; border-bottom:none; }
