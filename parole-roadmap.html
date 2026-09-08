@@ -80,6 +80,8 @@ p b { color:var(--ink); }
 function depthOf(b){ var d=0, n=b; while((n=n.parentNode) && n!==document){ if(n.classList && n.classList.contains('tabs')) d++; } return d; }
 function tabsLevel(root){ var panes=Array.prototype.slice.call(root.querySelectorAll('.tabpane')); var hid=panes.map(function(p){ return p.hidden; }); panes.forEach(function(p){ p.hidden=false; });
   var bars=Array.prototype.slice.call(root.querySelectorAll('.tabbar')); bars.forEach(function(b){ b.style.minHeight=''; });
+  // a bar takes as many equal columns as it has items, up to what the width holds at ~7em each (Pekka: 'make irregular shapes submenus fit the width')
+  bars.forEach(function(b){ var em=parseFloat(getComputedStyle(b).fontSize)||14, fit=Math.max(1, Math.floor(b.clientWidth/(7*em))), n=Math.min(b.children.length, fit); b.style.gridTemplateColumns='repeat('+n+', 1fr)'; });
   var by={}; bars.forEach(function(b){ var d=depthOf(b); by[d]=Math.max(by[d]||0, b.offsetHeight); });
   panes.forEach(function(p,i){ p.hidden=hid[i]; }); bars.forEach(function(b){ var h=by[depthOf(b)]; if(h>0) b.style.minHeight=h+'px'; });
   // a group whose row IS the verbs (fully irregular) leaves the room a third row would take, so the grid stands where it stands elsewhere
