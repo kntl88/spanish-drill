@@ -44,12 +44,14 @@ p b { color:var(--ink); }
 .tabpane[hidden] { display:none; }
 .tabs .tabs { margin:6px 0 0; }
 .tabs .tabs .tabbar button { font-size:.82em; padding:3px 10px; }
-.rfull td.kt { --kl:linear-gradient(to right, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px); --kr:linear-gradient(to left, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px);
-    --ktp:linear-gradient(to bottom, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px); --kbt:linear-gradient(to top, transparent 2px, var(--kc) 2px, var(--kc) 4px, transparent 4px);
-    background-image:var(--kl), var(--kr) !important; }
-.rfull td.kt.kt-top { background-image:var(--kl), var(--kr), var(--ktp) !important; }
-.rfull td.kt.kt-bot { background-image:var(--kl), var(--kr), var(--kbt) !important; }
-.rfull td.kt.kt-top.kt-bot { background-image:var(--kl), var(--kr), var(--ktp), var(--kbt) !important; }
+.rfull td.kt { --kline:linear-gradient(var(--kc), var(--kc)); background-image:var(--kline), var(--kline) !important; background-repeat:no-repeat !important;
+    background-size:2px 100%, 2px 100% !important; background-position:left 2px top 0, right 2px top 0 !important; }
+.rfull td.kt.kt-top { background-image:var(--kline), var(--kline), var(--kline) !important;
+    background-size:2px calc(100% - 2px), 2px calc(100% - 2px), calc(100% - 4px) 2px !important; background-position:left 2px top 2px, right 2px top 2px, left 2px top 2px !important; }
+.rfull td.kt.kt-bot { background-image:var(--kline), var(--kline), var(--kline) !important;
+    background-size:2px calc(100% - 2px), 2px calc(100% - 2px), calc(100% - 4px) 2px !important; background-position:left 2px top 0, right 2px top 0, left 2px bottom 2px !important; }
+.rfull td.kt.kt-top.kt-bot { background-image:var(--kline), var(--kline), var(--kline), var(--kline) !important;
+    background-size:2px calc(100% - 4px), 2px calc(100% - 4px), calc(100% - 4px) 2px, calc(100% - 4px) 2px !important; background-position:left 2px top 2px, right 2px top 2px, left 2px top 2px, left 2px bottom 2px !important; }
 .rfull td.kt-ok { --kc:var(--accent); }
 .rfull td.kt-done { --kc:var(--new); }
 .rfull td.c-ok, .rfull td.c-ok b { color:var(--accent) !important; }
