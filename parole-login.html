@@ -142,11 +142,16 @@ async function doLogin() {
         let html = await res.text();
         // THE STYLES COME BESIDE THE APP (2026-09-16): parole.css was lifted out of parole.html, so the sheet is fetched
         // the same way and injected ahead of the document. No sheet, no launch - an unstyled app is worse than an error.
-        const cssUrl = 'https://api.github.com/repos/' + GH_OWNER + '/' + (creds.repo || 'Spanish') + '/contents/parole.css?t=' + Date.now();
-        const cssRes = await fetch(cssUrl, { headers: hdr('application/vnd.github.raw'), cache:'no-store' });
-        if (!cssRes.ok) { setStatus('Failed to load styles: ' + cssRes.status, 'err'); return; }
-        const css = await cssRes.text();
-        if (!css) { setStatus('Failed to load styles: empty file', 'err'); return; }
+        const side = async (file, what) => {   // the sheet and the engine ride beside the app (2026-09-16)
+            const u = 'https://api.github.com/repos/' + GH_OWNER + '/' + (creds.repo || 'Spanish') + '/contents/' + file + '?t=' + Date.now();
+            const r = await fetch(u, { headers: hdr('application/vnd.github.raw'), cache:'no-store' });
+            if (!r.ok) { setStatus('Failed to load ' + what + ': ' + r.status, 'err'); return null; }
+            const t = await r.text();
+            if (!t) { setStatus('Failed to load ' + what + ': empty file', 'err'); return null; }
+            return t;
+        };
+        const css = await side('parole.css', 'styles'); if (css === null) return;
+        const engine = await side('parole-engine.js', 'the engine'); if (engine === null) return;
         if (html.charAt(0) === '{') {   // an older proxy answered with JSON: decode it the old way
             try { const data = JSON.parse(html); html = data.content ? decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))) : ''; } catch (e) { html = ''; }
         }
@@ -160,7 +165,7 @@ async function doLogin() {
             'window.__PL_REPO=' + JSON.stringify(creds.repo || 'Spanish') + ';' +
             '<\/script>';
         document.open();
-        document.write('<style>\n' + css + '\n</style>\n' + injection + html);
+        document.write('<style>\n' + css + '\n</style>\n' + injection + '<script>\n' + engine + '\n<\/script>\n' + html);
         document.close();
     } catch(e) {
         setStatus('Launch failed: ' + e.message, 'err');
