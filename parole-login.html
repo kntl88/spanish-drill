@@ -140,6 +140,13 @@ async function doLogin() {
         let res = await fetch(appUrl, { headers: hdr('application/vnd.github.raw'), cache:'no-store' });
         if (!res.ok) { setStatus('Failed to load app: ' + res.status, 'err'); return; }
         let html = await res.text();
+        // THE STYLES COME BESIDE THE APP (2026-09-16): parole.css was lifted out of parole.html, so the sheet is fetched
+        // the same way and injected ahead of the document. No sheet, no launch - an unstyled app is worse than an error.
+        const cssUrl = 'https://api.github.com/repos/' + GH_OWNER + '/' + (creds.repo || 'Spanish') + '/contents/parole.css?t=' + Date.now();
+        const cssRes = await fetch(cssUrl, { headers: hdr('application/vnd.github.raw'), cache:'no-store' });
+        if (!cssRes.ok) { setStatus('Failed to load styles: ' + cssRes.status, 'err'); return; }
+        const css = await cssRes.text();
+        if (!css) { setStatus('Failed to load styles: empty file', 'err'); return; }
         if (html.charAt(0) === '{') {   // an older proxy answered with JSON: decode it the old way
             try { const data = JSON.parse(html); html = data.content ? decodeURIComponent(escape(atob(data.content.replace(/\n/g, '')))) : ''; } catch (e) { html = ''; }
         }
@@ -153,7 +160,7 @@ async function doLogin() {
             'window.__PL_REPO=' + JSON.stringify(creds.repo || 'Spanish') + ';' +
             '<\/script>';
         document.open();
-        document.write(injection + html);
+        document.write('<style>\n' + css + '\n</style>\n' + injection + html);
         document.close();
     } catch(e) {
         setStatus('Launch failed: ' + e.message, 'err');
