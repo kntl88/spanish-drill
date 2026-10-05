@@ -130,7 +130,14 @@ async function doLogin() {
     catch(e) { setStatus('Wrong password', 'err'); document.getElementById('pw').value=''; return; }
 
     if (!creds.token) { setStatus('Corrupt account entry', 'err'); return; }
+    // THE TAB REMEMBERS THE LOGIN (v312.330, Pekka: 'when i try to view the states from the other views button, i'm getting
+    // thrown out of the login'): the decrypted login is kept in sessionStorage for this tab only, so a reload - a kept state's
+    // ?state=..., back to live practice - starts the app again without the password. Closing the tab forgets it.
+    try { sessionStorage.setItem('plSession', JSON.stringify({ token: creds.token, user: creds.user || user, repo: creds.repo || 'Spanish' })); } catch (e) {}
+    return launch(creds, user);
+}
 
+async function launch(creds, user) {
     setStatus('Loading app…', 'ok');
     try {
         // RAW, NOT BASE64 (2026-09-16): the JSON form of the contents API returns NO content for a file over 1 MB, and
@@ -171,6 +178,9 @@ async function doLogin() {
         setStatus('Launch failed: ' + e.message, 'err');
     }
 }
+// a reload in a tab that has logged in goes straight to the app
+(function () { let c = null; try { c = JSON.parse(sessionStorage.getItem('plSession') || 'null'); } catch (e) {}
+    if (c && c.token) launch(c, c.user); })();
 </script>
 </body>
 </html>
